@@ -17,7 +17,9 @@ export function InsurerCaseActions({
     const url = `${origin}/share/insurer/${encodeURIComponent(shareToken)}`;
     try {
       await navigator.clipboard.writeText(url);
-      setMsg("Link copied to clipboard.");
+      setMsg(
+        "Link copied. Send it to your policyholder — they need their own CareMatch subscription to connect with specialists.",
+      );
     } catch {
       setMsg("Could not copy — copy manually: " + url);
     }

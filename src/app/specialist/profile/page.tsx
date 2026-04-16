@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardPathForRole } from "@/lib/auth/dashboard";
+import { hasActivePlatformAccess } from "@/lib/auth/subscription";
 import { SpecialistProfileEditor } from "./specialist-profile-editor";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +24,11 @@ export default async function SpecialistProfilePage() {
 
   if (profile?.role !== "specialist") {
     redirect(dashboardPathForRole(profile?.role));
+  }
+
+  const access = await hasActivePlatformAccess(supabase, user.id);
+  if (!access) {
+    redirect("/onboarding/subscription");
   }
 
   return <SpecialistProfileEditor />;

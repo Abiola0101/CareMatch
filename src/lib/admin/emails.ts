@@ -67,3 +67,70 @@ ${opts.profileUrl}
     return { ok: false, error: "Send failed" };
   }
 }
+
+export async function sendHospitalApprovedEmail(opts: {
+  to: string;
+  contactName: string;
+  institutionName: string;
+  dashboardUrl: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY?.trim()) {
+    console.warn("[email] RESEND_API_KEY missing — skip hospital approved");
+    return { ok: false, error: "Email not configured" };
+  }
+  try {
+    await resend.emails.send({
+      from: from(),
+      to: opts.to,
+      subject: "Your CareMatch listing is now live",
+      text: `Hi ${opts.contactName},
+
+Good news — ${opts.institutionName} has been verified and your hospital listing is now live on CareMatch Global.
+
+Open your dashboard: ${opts.dashboardUrl}
+
+You can update your profile and respond to specialist privilege requests from there.
+
+— CareMatch Global`,
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error("[email] hospital approved", e);
+    return { ok: false, error: "Send failed" };
+  }
+}
+
+export async function sendHospitalRejectedEmail(opts: {
+  to: string;
+  contactName: string;
+  institutionName: string;
+  reason: string;
+  dashboardUrl: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (!process.env.RESEND_API_KEY?.trim()) {
+    console.warn("[email] RESEND_API_KEY missing — skip hospital rejected");
+    return { ok: false, error: "Email not configured" };
+  }
+  try {
+    await resend.emails.send({
+      from: from(),
+      to: opts.to,
+      subject: "Action required — additional information needed",
+      text: `Hi ${opts.contactName},
+
+We reviewed the listing for ${opts.institutionName} and need a bit more information before we can publish it on CareMatch Global.
+
+Reason:
+${opts.reason}
+
+Please sign in, update your hospital profile with the requested details, and resubmit for verification:
+${opts.dashboardUrl}
+
+— CareMatch Global`,
+    });
+    return { ok: true };
+  } catch (e) {
+    console.error("[email] hospital rejected", e);
+    return { ok: false, error: "Send failed" };
+  }
+}

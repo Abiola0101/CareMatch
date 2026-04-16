@@ -95,17 +95,17 @@ export default async function InsurerDashboardPage() {
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Cases this month</CardTitle>
-            <CardDescription>Against your plan limit</CardDescription>
+            <CardTitle>Cases submitted this month</CardTitle>
+            <CardDescription>Against your plan allowance (billing period)</CardDescription>
           </CardHeader>
           <CardContent>
             <p className="text-3xl font-semibold tabular-nums">
-              {monthCount ?? 0}{" "}
+              {used}{" "}
               <span className="text-lg font-normal text-muted-foreground">of {limit}</span>
             </p>
             <p className="mt-2 text-sm text-muted-foreground">
-              Cases submitted this calendar month vs your monthly case allowance. Billing-cycle
-              usage: {used} of {limit}.
+              Submissions counted toward your monthly case quota (resets on your billing cycle).
+              New cases created this calendar month: {monthCount ?? 0}.
             </p>
           </CardContent>
         </Card>

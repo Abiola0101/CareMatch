@@ -23,6 +23,7 @@ const PIE_COLORS = ["#0ea5e9", "#8b5cf6", "#10b981", "#f59e0b", "#64748b"];
 type AnalyticsPayload = {
   matchesPerMonth: { month: string; label: string; count: number }[];
   caseTypeBreakdown: { specialty: string; count: number }[];
+  caseTypeBreakdownSource?: "sub_specialties" | "specialty";
   conversion: {
     matchedDistinctCases: number;
     connectedDistinctCasesOverlapping: number;
@@ -149,7 +150,11 @@ export function SpecialistAnalyticsDashboard() {
       <Card>
         <CardHeader>
           <CardTitle>Case type breakdown</CardTitle>
-          <CardDescription>Patient case specialties you matched with most often</CardDescription>
+          <CardDescription>
+            {data?.caseTypeBreakdownSource === "sub_specialties"
+              ? "Your profile sub-specialties that overlap with matched case narratives (same keyword logic as clinical matching)."
+              : "Patient case specialties among your distinct matched cases. Add sub-specialty tags on your profile for a tag-level breakdown when case text overlaps your tags."}
+          </CardDescription>
         </CardHeader>
         <CardContent className="h-80">
           {pieData.length === 0 ? (

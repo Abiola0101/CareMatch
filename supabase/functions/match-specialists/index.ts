@@ -456,18 +456,9 @@ serve(async (req: Request) => {
 
   const THRESHOLD = 40;
   const sortedAll = [...scored].sort((a, b) => b.match_score - a.match_score);
-  let ranked = sortedAll
+  const ranked = sortedAll
     .filter((r) => r.match_score >= THRESHOLD)
     .slice(0, 10);
-
-  // If everyone scores below threshold (common with sparse keywords / low volume),
-  // still persist the top 10 so patients see results; threshold mainly filters noise.
-  if (ranked.length === 0 && sortedAll.length > 0) {
-    console.warn(
-      "[match-specialists] no specialists >= threshold; persisting top 10 by score",
-    );
-    ranked = sortedAll.slice(0, 10);
-  }
 
   const delTable = matchKind === "patient"
     ? "match_results"

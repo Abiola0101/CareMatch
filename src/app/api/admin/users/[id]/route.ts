@@ -1,32 +1,15 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { requireAdminUser } from "@/lib/admin/require-admin";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
 export const dynamic = "force-dynamic";
 
-const patchSchema = z.object({
-  suspended: z.boolean(),
-});
-
-export async function PATCH(
-  request: Request,
+export async function GET(
+  _request: Request,
   { params }: { params: { id: string } },
 ) {
   const r = await requireAdminUser();
   if ("error" in r) return r.error;
-
-  let json: unknown;
-  try {
-    json = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
-  }
-
-  const parsed = patchSchema.safeParse(json);
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid body" }, { status: 400 });
-  }
 
   let admin: ReturnType<typeof createServiceRoleClient>;
   try {
@@ -35,15 +18,34 @@ export async function PATCH(
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 });
   }
 
-  const suspended_at = parsed.data.suspended ? new Date().toISOString() : null;
-  const { error } = await admin
-    .from("profiles")
-    .update({ suspended_at })
-    .eq("id", params.id);
+  const id = params.id;
 
-  if (error) {
-    return NextResponse.json({ error: "Could not update" }, { status: 500 });
+  const { data: profile, error: pe } = await admin
+    .from("profiles")
+    .select("id, full_name, email, phone, role, country, created_at, suspended_at, avatar_url")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (pe || !profile) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ ok: true });
+  let roleProfile: Record<string, unknown> | null = null;
+  const role = profile.role as string;
+
+  if (role === "patient") {
+    const { data } = await admin.from("patient_profiles").select("*").eq("id", id).maybeSingle();
+    roleProfile = data as Record<string, unknown> | null;
+  } else if (role === "specialist") {
+    const { data } = await admin.from("specialist_profiles").select("*").eq("id", id).maybeSingle();
+    roleProfile = data as Record<string, unknown> | null;
+  } else if (role === "hospital") {
+    const { data } = await admin.from("hospital_profiles").select("*").eq("id", id).maybeSingle();
+    roleProfile = data as Record<string, unknown> | null;
+  } else if (role === "insurer") {
+    const { data } = await admin.from("insurer_profiles").select("*").eq("id", id).maybeSingle();
+    roleProfile = data as Record<string, unknown> | null;
+  }
+
+  return NextResponse.json({ profile, roleProfile });
 }

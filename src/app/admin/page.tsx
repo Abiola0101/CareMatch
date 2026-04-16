@@ -43,7 +43,8 @@ export default async function AdminDashboardPage() {
     insurerSubs,
     pendingSpec,
     pendingHosp,
-    matchesToday,
+    patientMatchesToday,
+    insurerMatchesToday,
   ] = await Promise.all([
     admin.from("patient_profiles").select("id", { count: "exact", head: true }).not("stripe_sub_id", "is", null),
     admin.from("specialist_profiles").select("id", { count: "exact", head: true }).not("stripe_sub_id", "is", null),
@@ -55,7 +56,14 @@ export default async function AdminDashboardPage() {
       .eq("verified", false),
     admin.from("hospital_profiles").select("id", { count: "exact", head: true }).eq("verified", false),
     admin.from("match_results").select("id", { count: "exact", head: true }).gte("computed_at", startOfDay.toISOString()),
+    admin
+      .from("insurer_match_results")
+      .select("id", { count: "exact", head: true })
+      .gte("computed_at", startOfDay.toISOString()),
   ]);
+
+  const matchesTodayTotal =
+    (patientMatchesToday.count ?? 0) + (insurerMatchesToday.count ?? 0);
 
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
@@ -111,12 +119,20 @@ export default async function AdminDashboardPage() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Matches run today</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">{matchesToday.count ?? 0}</CardTitle>
+            <CardTitle className="text-2xl tabular-nums">{matchesTodayTotal}</CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Rows in <code className="rounded bg-muted px-1">match_results</code> with{" "}
-            <code className="rounded bg-muted px-1">computed_at</code> today (UTC-based server
-            midnight).
+            <p>
+              Patient pipeline:{" "}
+              <span className="font-medium text-foreground">{patientMatchesToday.count ?? 0}</span>{" "}
+              (<code className="rounded bg-muted px-1">match_results</code>)
+            </p>
+            <p className="mt-1">
+              Insurer pipeline:{" "}
+              <span className="font-medium text-foreground">{insurerMatchesToday.count ?? 0}</span>{" "}
+              (<code className="rounded bg-muted px-1">insurer_match_results</code>)
+            </p>
+            <p className="mt-2">Since server midnight UTC for the current day.</p>
           </CardContent>
         </Card>
       </div>

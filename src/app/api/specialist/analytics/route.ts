@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { subSpecialtyOverlapsCase } from "@/lib/match/subspec-keyword-overlap";
 import { requireSpecialistUser } from "@/lib/specialist/api-auth";
 
 export const dynamic = "force-dynamic";
@@ -54,13 +55,28 @@ export async function GET() {
     ]),
   );
 
+  const { data: specRow } = await supabase
+    .from("specialist_profiles")
+    .select("sub_specialties")
+    .eq("id", userId)
+    .maybeSingle();
+
+  const rawTags = (specRow?.sub_specialties ?? []) as unknown[];
+  const subSpecialtyTags = rawTags.filter(
+    (t: unknown): t is string => typeof t === "string" && t.trim().length > 0,
+  );
+
   let specialtyByCase = new Map<string, string | null>();
+  let conditionByCase = new Map<string, string | null>();
   if (caseIds.length > 0) {
     const { data: cases } = await supabase
       .from("patient_cases")
-      .select("id, specialty")
+      .select("id, specialty, condition_summary")
       .in("id", caseIds);
-    specialtyByCase = new Map((cases ?? []).map((c) => [c.id, c.specialty]));
+    for (const c of cases ?? []) {
+      specialtyByCase.set(c.id, c.specialty);
+      conditionByCase.set(c.id, c.condition_summary);
+    }
   }
 
   const matchesPerMonth: { month: string; label: string; count: number }[] = monthStarts.map(
@@ -78,16 +94,40 @@ export async function GET() {
     },
   );
 
-  const subSpecCounts: Record<string, number> = {};
-  for (const m of matches ?? []) {
-    const spec = specialtyByCase.get(m.case_id) ?? "unknown";
-    subSpecCounts[spec] = (subSpecCounts[spec] ?? 0) + 1;
+  const distinctMatchedCaseIds = Array.from(
+    new Set((matches ?? []).map((m) => m.case_id)),
+  );
+
+  const tagCounts: Record<string, number> = {};
+  if (subSpecialtyTags.length > 0 && distinctMatchedCaseIds.length > 0) {
+    for (const caseId of distinctMatchedCaseIds) {
+      const summary = conditionByCase.get(caseId) ?? null;
+      for (const tag of subSpecialtyTags) {
+        if (subSpecialtyOverlapsCase(tag, summary)) {
+          tagCounts[tag] = (tagCounts[tag] ?? 0) + 1;
+        }
+      }
+    }
   }
 
-  const caseTypeBreakdown = Object.entries(subSpecCounts).map(([specialty, count]) => ({
-    specialty,
-    count,
-  }));
+  const hasSubSpecBreakdown = Object.values(tagCounts).some((n) => n > 0);
+
+  const specialtyFallback: Record<string, number> = {};
+  for (const caseId of distinctMatchedCaseIds) {
+    const spec = specialtyByCase.get(caseId) ?? "unknown";
+    specialtyFallback[spec] = (specialtyFallback[spec] ?? 0) + 1;
+  }
+
+  const caseTypeBreakdown = Object.entries(hasSubSpecBreakdown ? tagCounts : specialtyFallback).map(
+    ([specialty, count]) => ({
+      specialty,
+      count,
+    }),
+  );
+
+  const caseTypeBreakdownSource = hasSubSpecBreakdown
+    ? ("sub_specialties" as const)
+    : ("specialty" as const);
 
   const matchedCaseIds = new Set((matches ?? []).map((m) => m.case_id));
   const connectedCaseIds = new Set(
@@ -111,6 +151,7 @@ export async function GET() {
   return NextResponse.json({
     matchesPerMonth,
     caseTypeBreakdown,
+    caseTypeBreakdownSource,
     conversion: {
       matchedDistinctCases: matchedCaseIds.size,
       connectedDistinctCasesOverlapping: overlap,
