@@ -1,0 +1,3 @@
+# Deployed with the function. Disables gateway JWT verify so the service-role
+# bearer is not rejected before our handler (we still require bearer === service key).
+verify_jwt = false

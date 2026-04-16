@@ -1,0 +1,7 @@
+# Supabase local / deploy config
+# https://supabase.com/docs/guides/cli/config
+
+# Internal function: API route sends service-role JWT; gateway JWT verify can
+# surface "Invalid JWT" for some callers. Auth is enforced in-function (bearer === service key).
+[functions.match-specialists]
+verify_jwt = false
