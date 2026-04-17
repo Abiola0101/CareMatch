@@ -16,6 +16,45 @@ const SPECIALTIES = [
   { value: "orthopaedics", label: "Orthopaedics & MSK" },
 ] as const;
 
+const SUBSPEC_OPTIONS_BY_SPECIALTY: Record<string, string[]> = {
+  cardiology: [
+    "Heart disease",
+    "Arrhythmia",
+    "Cardiac tumours",
+    "Congenital heart disease",
+    "Structural heart",
+    "Heart failure",
+    "Interventional cardiology",
+    "Electrophysiology",
+    "Cardiac imaging",
+    "Preventive cardiology",
+  ],
+  oncology: [
+    "Solid tumours",
+    "Sarcoma",
+    "Blood cancers",
+    "Paediatric oncology",
+    "Rare tumours",
+    "Breast oncology",
+    "Lung oncology",
+    "GI oncology",
+    "Neuro-oncology",
+    "Immunotherapy",
+  ],
+  orthopaedics: [
+    "Bone tumours",
+    "Spine",
+    "Joints",
+    "Limb salvage",
+    "Sports injury",
+    "Hip replacement",
+    "Knee replacement",
+    "Shoulder",
+    "Paediatric orthopaedics",
+    "Trauma",
+  ],
+};
+
 const LANGUAGE_OPTIONS = [
   "English",
   "French",
@@ -292,9 +331,17 @@ export function SpecialistProfileEditor() {
   function addSubSpec() {
     const t = subSpecInput.trim();
     if (!t || subSpecs.includes(t)) return;
-    setSubSpecs([...subSpecs, t]);
+    setSubSpecs((prev) => [...prev, t]);
     setSubSpecInput("");
   }
+
+  function togglePresetSubSpec(label: string) {
+    setSubSpecs((prev) =>
+      prev.includes(label) ? prev.filter((x) => x !== label) : [...prev, label],
+    );
+  }
+
+  const presetSubSpecOptions = SUBSPEC_OPTIONS_BY_SPECIALTY[specialty] ?? [];
 
   function toggleLang(lang: string) {
     setLanguages((prev) =>
@@ -485,7 +532,14 @@ export function SpecialistProfileEditor() {
               <select
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 value={specialty}
-                onChange={(e) => setSpecialty(e.target.value)}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next !== specialty) {
+                    setSubSpecs([]);
+                    setSubSpecInput("");
+                  }
+                  setSpecialty(next);
+                }}
               >
                 <option value="">Select…</option>
                 {SPECIALTIES.map((s) => (
@@ -497,34 +551,66 @@ export function SpecialistProfileEditor() {
             </div>
             <div className="space-y-2">
               <Label>Sub-specialties</Label>
-              <div className="flex flex-wrap gap-2">
-                {subSpecs.map((s) => (
-                  <span
-                    key={s}
-                    className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
-                  >
-                    {s}
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => setSubSpecs(subSpecs.filter((x) => x !== s))}
-                    >
-                      ×
-                    </button>
-                  </span>
-                ))}
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Add tag"
-                  value={subSpecInput}
-                  onChange={(e) => setSubSpecInput(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addSubSpec())}
-                />
-                <Button type="button" variant="secondary" onClick={addSubSpec}>
-                  Add
-                </Button>
-              </div>
+              {!specialty ? (
+                <p className="text-sm text-muted-foreground">
+                  Select a specialty to see suggested sub-specialties, or add your own after
+                  choosing a specialty.
+                </p>
+              ) : (
+                <>
+                  {presetSubSpecOptions.length > 0 ? (
+                    <div className="grid max-h-48 grid-cols-1 gap-2 overflow-y-auto rounded-md border p-3 sm:grid-cols-2">
+                      {presetSubSpecOptions.map((opt) => (
+                        <label key={opt} className="flex items-center gap-2 text-sm">
+                          <Checkbox
+                            checked={subSpecs.includes(opt)}
+                            onCheckedChange={() => togglePresetSubSpec(opt)}
+                          />
+                          {opt}
+                        </label>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a sub-specialty not listed above"
+                      value={subSpecInput}
+                      onChange={(e) => setSubSpecInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addSubSpec();
+                        }
+                      }}
+                    />
+                    <Button type="button" variant="secondary" onClick={addSubSpec}>
+                      Add
+                    </Button>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {subSpecs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">None selected yet.</p>
+                    ) : (
+                      subSpecs.map((s) => (
+                        <span
+                          key={s}
+                          className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-xs"
+                        >
+                          {s}
+                          <button
+                            type="button"
+                            className="text-muted-foreground hover:text-foreground"
+                            onClick={() => setSubSpecs((prev) => prev.filter((x) => x !== s))}
+                            aria-label={`Remove ${s}`}
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="inst">Institution</Label>
