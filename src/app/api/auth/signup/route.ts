@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { z } from "zod";
+import { ensureRoleChildProfilesWithServiceRole } from "@/lib/auth/role-profiles";
 
 export const dynamic = "force-dynamic";
 
@@ -105,6 +106,14 @@ export async function POST(request: Request) {
         email: email.trim(),
       })
       .eq("id", data.user.id);
+  }
+
+  const { error: ensureErr } = await ensureRoleChildProfilesWithServiceRole(
+    data.user.id,
+    role,
+  );
+  if (ensureErr) {
+    console.error("[auth/signup] ensure role child profile", ensureErr.message);
   }
 
   return NextResponse.json({
