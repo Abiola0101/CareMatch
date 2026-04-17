@@ -166,7 +166,7 @@ export function SpecialistProfileEditor() {
     savedToastTimerRef.current = setTimeout(() => {
       setMessage(null);
       savedToastTimerRef.current = null;
-    }, 3000);
+    }, 5000);
   }
 
   const [fullName, setFullName] = useState("");
@@ -485,8 +485,10 @@ export function SpecialistProfileEditor() {
     return (
       <div
         className={cn(
-          "mb-3 rounded-md border px-3 py-2 text-sm",
-          err ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border bg-muted/50",
+          "mb-3 rounded-md border px-3 py-2 text-sm font-medium",
+          err
+            ? "border-destructive/50 bg-destructive/10 text-destructive"
+            : "border-green-500/60 bg-green-50 text-green-700 dark:bg-green-950/40 dark:text-green-400",
         )}
       >
         {err ?? message}
