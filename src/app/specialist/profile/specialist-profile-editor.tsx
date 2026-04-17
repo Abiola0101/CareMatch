@@ -480,6 +480,20 @@ export function SpecialistProfileEditor() {
     { id: "verify" as const, label: "Verification documents" },
   ];
 
+  function renderFormFeedback() {
+    if (!message && !err) return null;
+    return (
+      <div
+        className={cn(
+          "mb-3 rounded-md border px-3 py-2 text-sm",
+          err ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border bg-muted/50",
+        )}
+      >
+        {err ?? message}
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="mx-auto min-w-0 max-w-4xl px-3 py-12 text-center text-sm text-muted-foreground sm:px-4">
@@ -496,17 +510,6 @@ export function SpecialistProfileEditor() {
           Keep your information accurate so patients see the right match.
         </p>
       </div>
-
-      {(message || err) && (
-        <div
-          className={cn(
-            "mb-4 rounded-md border px-3 py-2 text-sm",
-            err ? "border-destructive/50 bg-destructive/10 text-destructive" : "border-border bg-muted/50",
-          )}
-        >
-          {err ?? message}
-        </div>
-      )}
 
       <div className="mb-4">
         <Link
@@ -740,6 +743,7 @@ export function SpecialistProfileEditor() {
                 Accepting new patients
               </Label>
             </div>
+            {renderFormFeedback()}
             <Button onClick={() => void savePersonal()} disabled={saving}>
               {saving ? "Saving…" : "Save personal details"}
             </Button>
@@ -850,6 +854,7 @@ export function SpecialistProfileEditor() {
               </CardContent>
             </Card>
           ))}
+          {renderFormFeedback()}
           <Button onClick={() => void saveCareModes()} disabled={saving}>
             {saving ? "Saving…" : "Save care modes"}
           </Button>
@@ -902,6 +907,7 @@ export function SpecialistProfileEditor() {
                 ))}
               </ul>
             )}
+            {renderFormFeedback()}
           </CardContent>
         </Card>
       )}
@@ -961,6 +967,7 @@ export function SpecialistProfileEditor() {
                 </ul>
               )}
             </div>
+            {renderFormFeedback()}
           </CardContent>
         </Card>
       )}
@@ -1014,6 +1021,7 @@ export function SpecialistProfileEditor() {
                 />
               </div>
             </div>
+            {renderFormFeedback()}
             <div className="mt-6 flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setModalOpen(false)}>
                 Cancel
