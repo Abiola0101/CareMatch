@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -145,11 +146,28 @@ function mergeModes(rows: { mode: string; available: string; detail: string | nu
 
 export function SpecialistProfileEditor() {
   const supabase = useMemo(() => createClient(), []);
+  const savedToastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [tab, setTab] = useState<"personal" | "care" | "privileges" | "verify">("personal");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+
+  function clearSavedToastTimer() {
+    if (savedToastTimerRef.current) {
+      clearTimeout(savedToastTimerRef.current);
+      savedToastTimerRef.current = null;
+    }
+  }
+
+  function showSavedSuccessfully() {
+    clearSavedToastTimer();
+    setMessage("Saved successfully");
+    savedToastTimerRef.current = setTimeout(() => {
+      setMessage(null);
+      savedToastTimerRef.current = null;
+    }, 3000);
+  }
 
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
@@ -253,8 +271,11 @@ export function SpecialistProfileEditor() {
     void loadAll();
   }, [loadAll]);
 
+  useEffect(() => () => clearSavedToastTimer(), []);
+
   async function savePersonal() {
     setSaving(true);
+    clearSavedToastTimer();
     setMessage(null);
     setErr(null);
     try {
@@ -284,7 +305,7 @@ export function SpecialistProfileEditor() {
         const j = await res.json().catch(() => ({}));
         throw new Error((j as { error?: string }).error ?? "Save failed");
       }
-      setMessage("Personal details saved.");
+      showSavedSuccessfully();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -294,6 +315,7 @@ export function SpecialistProfileEditor() {
 
   async function saveCareModes() {
     setSaving(true);
+    clearSavedToastTimer();
     setMessage(null);
     setErr(null);
     try {
@@ -320,7 +342,7 @@ export function SpecialistProfileEditor() {
         const j = await res.json().catch(() => ({}));
         throw new Error((j as { error?: string }).error ?? "Save failed");
       }
-      setMessage("Care modes saved.");
+      showSavedSuccessfully();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -375,6 +397,7 @@ export function SpecialistProfileEditor() {
     setMhPriv("full_surgical");
     setMhProc("");
     setMhCap(50);
+    showSavedSuccessfully();
     void loadAll();
   }
 
@@ -429,7 +452,7 @@ export function SpecialistProfileEditor() {
         const j = await reg.json().catch(() => ({}));
         throw new Error((j as { error?: string }).error ?? "Register failed");
       }
-      setMessage("File uploaded.");
+      showSavedSuccessfully();
       void loadAll();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Upload failed");
@@ -485,12 +508,22 @@ export function SpecialistProfileEditor() {
         </div>
       )}
 
+      <div className="mb-4">
+        <Link
+          href="/specialist/dashboard"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Back to dashboard
+        </Link>
+      </div>
+
       <div className="mb-6 flex flex-wrap gap-2 border-b pb-2">
         {tabs.map((t) => (
           <button
             key={t.id}
             type="button"
             onClick={() => {
+              clearSavedToastTimer();
               setTab(t.id);
               setMessage(null);
               setErr(null);
