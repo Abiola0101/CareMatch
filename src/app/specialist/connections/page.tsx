@@ -118,144 +118,155 @@ export default function SpecialistConnectionsPage() {
     }
   };
 
+  const pending = rows.filter((r) => r.status === "pending");
+  const accepted = rows.filter((r) => r.status === "accepted");
+  const archived = rows.filter((r) => r.status === "declined" || r.status === "expired");
+
+  function timeAgo(iso: string) {
+    const diff = Date.now() - new Date(iso).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return days < 7 ? `${days}d ago` : new Date(iso).toLocaleDateString();
+  }
+
   return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
+    <main className="mx-auto max-w-2xl px-4 py-8">
       <div className="mb-6">
-        <Link
-          href="/specialist/dashboard"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
+        <Link href="/specialist/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
           ← Dashboard
         </Link>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight">Connections</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Patient identity is hidden until you accept a request.
+        </p>
       </div>
-      <h1 className="text-2xl font-semibold tracking-tight">Connection inbox</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Newest requests first. Patient identity stays hidden until you accept.
-      </p>
 
-      {err ? (
-        <p className="mt-4 text-sm text-destructive">{err}</p>
-      ) : null}
+      {err && <p className="mb-4 text-sm text-destructive">{err}</p>}
 
-      <div className="mt-8 space-y-6">
-        {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
-        ) : rows.length === 0 ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Inbox is empty</CardTitle>
-              <CardDescription>
-                When patients send connection requests, they will appear here. Complete your
-                profile and stay verified to receive matches.
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        ) : (
-          rows.map((r) => (
-            <Card key={r.id}>
-              <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    {r.specialty ? (
-                      <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium capitalize text-primary">
-                        {r.specialty}
-                      </span>
-                    ) : null}
-                    {urgencyBadge(r.urgency)}
-                  </div>
-                  <CardTitle className="mt-2 text-base">Connection request</CardTitle>
-                  <CardDescription>
-                    {modeLabel(r.preferred_mode)} ·{" "}
-                    {new Date(r.created_at).toLocaleString()}
-                  </CardDescription>
-                </div>
-                {r.match_score != null ? (
-                  <div className="text-right text-sm">
-                    <p className="text-2xl font-bold tabular-nums text-primary">
-                      {Math.round(Number(r.match_score))}
-                    </p>
-                    <p className="text-xs text-muted-foreground">match score</p>
-                  </div>
-                ) : null}
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <div>
-                  <p className="font-medium text-foreground">Condition summary</p>
-                  {r.status === "accepted" ? (
-                    <>
-                      <p className="mt-1 text-muted-foreground">
-                        {r.condition_summary?.trim() ? r.condition_summary : "—"}
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Loading…</p>
+      ) : rows.length === 0 ? (
+        <div className="rounded-xl border bg-card px-6 py-12 text-center shadow-sm">
+          <p className="text-4xl">📬</p>
+          <h2 className="mt-4 font-semibold">Inbox is empty</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            When patients send connection requests, they will appear here. Keep your profile complete and verified to receive matches.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-8">
+
+          {/* Pending requests */}
+          {pending.length > 0 && (
+            <div>
+              <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                New requests
+                <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-bold text-primary-foreground">
+                  {pending.length}
+                </span>
+              </h2>
+              <div className="space-y-4">
+                {pending.map((r) => (
+                  <Card key={r.id} className="border-amber-200 dark:border-amber-800">
+                    <CardHeader className="flex flex-row items-start justify-between pb-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {r.specialty && (
+                          <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium capitalize text-primary">
+                            {r.specialty}
+                          </span>
+                        )}
+                        {urgencyBadge(r.urgency)}
+                        <span className="text-xs text-muted-foreground">{timeAgo(r.created_at)}</span>
+                      </div>
+                      {r.match_score != null && (
+                        <div className="text-right">
+                          <p className="text-xl font-bold text-primary">{Math.round(Number(r.match_score))}</p>
+                          <p className="text-[10px] text-muted-foreground">match</p>
+                        </div>
+                      )}
+                    </CardHeader>
+                    <CardContent className="space-y-3 text-sm">
+                      <div>
+                        <p className="font-medium">Requested care mode</p>
+                        <p className="text-muted-foreground">{modeLabel(r.preferred_mode)}</p>
+                      </div>
+                      <p className="text-muted-foreground italic">
+                        Accept to view the patient&apos;s clinical summary and message.
                       </p>
-                      {r.age_group ? (
-                        <p className="mt-2 text-xs text-muted-foreground">
-                          Age group: <span className="capitalize">{r.age_group}</span>
+                      <div className="flex gap-2 pt-1">
+                        <Button size="sm" disabled={acting === r.id} onClick={() => void act(r.id, "accept")}>
+                          Accept
+                        </Button>
+                        <Button size="sm" variant="outline" disabled={acting === r.id} onClick={() => void act(r.id, "decline")}>
+                          Decline
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Active conversations */}
+          {accepted.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Active conversations
+              </h2>
+              <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+                {accepted.map((r, i) => (
+                  <Link
+                    key={r.id}
+                    href={`/specialist/connections/${r.id}/messages`}
+                    className={`flex items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 ${i !== 0 ? "border-t" : ""}`}
+                  >
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                      P
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="font-semibold truncate">
+                          {r.specialty ? r.specialty.charAt(0).toUpperCase() + r.specialty.slice(1) : "Patient"}
+                          {" "}case
                         </p>
-                      ) : null}
-                    </>
-                  ) : (
-                    <p className="mt-1 text-muted-foreground">
-                      Accept this request to view the patient&apos;s clinical summary and age
-                      group.
-                    </p>
-                  )}
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">Patient message</p>
-                  {r.status === "accepted" && r.message?.trim() ? (
-                    <p className="mt-1 whitespace-pre-wrap text-muted-foreground">{r.message}</p>
-                  ) : r.status === "accepted" ? (
-                    <p className="mt-1 text-muted-foreground">—</p>
-                  ) : (
-                    <p className="mt-1 text-muted-foreground">
-                      The patient&apos;s message is shown after you accept.
-                    </p>
-                  )}
-                </div>
-                {r.status === "pending" ? (
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    <Button
-                      type="button"
-                      size="sm"
-                      disabled={acting === r.id}
-                      onClick={() => void act(r.id, "accept")}
-                    >
-                      Accept
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      disabled={acting === r.id}
-                      onClick={() => void act(r.id, "decline")}
-                    >
-                      Decline
-                    </Button>
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      disabled
-                      title="Messaging opens after you accept"
-                    >
-                      Messages
-                    </Button>
+                        <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(r.created_at)}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground truncate">
+                        {modeLabel(r.preferred_mode)} · {urgencyBadge(r.urgency) ? r.urgency?.replace("_", " ") : "routine"}
+                      </p>
+                    </div>
+                    <span className="text-muted-foreground">›</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Archived */}
+          {archived.length > 0 && (
+            <div>
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Archived
+              </h2>
+              <div className="overflow-hidden rounded-xl border bg-card opacity-60 shadow-sm">
+                {archived.map((r, i) => (
+                  <div key={r.id} className={`flex items-center gap-4 px-4 py-3 ${i !== 0 ? "border-t" : ""}`}>
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">P</div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium capitalize">{r.status}</p>
+                      <p className="text-xs text-muted-foreground">{modeLabel(r.preferred_mode)} · {timeAgo(r.created_at)}</p>
+                    </div>
                   </div>
-                ) : r.status === "accepted" ? (
-                  <Button variant="outline" size="sm" asChild>
-                    <Link href={`/specialist/connections/${r.id}/messages`}>
-                      Open messages
-                    </Link>
-                  </Button>
-                ) : (
-                  <p className="text-xs text-muted-foreground capitalize">
-                    Status: {r.status}
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </main>
   );
 }

@@ -3,71 +3,31 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardPathForRole } from "@/lib/auth/dashboard";
 import { hasActivePlatformAccess } from "@/lib/auth/subscription";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-
-function statusBadge(status: string) {
-  switch (status) {
-    case "pending":
-      return (
-        <span className="rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-800 dark:text-amber-200">
-          Pending
-        </span>
-      );
-    case "accepted":
-      return (
-        <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:text-emerald-200">
-          Accepted
-        </span>
-      );
-    case "declined":
-      return (
-        <span className="rounded-full bg-red-500/15 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:text-red-200">
-          Declined
-        </span>
-      );
-    case "expired":
-      return (
-        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-          Expired
-        </span>
-      );
-    default:
-      return (
-        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs text-muted-foreground">
-          {status}
-        </span>
-      );
-  }
-}
 
 function modeLabel(m: string | null) {
   switch (m) {
-    case "remote":
-      return "Remote second opinion";
-    case "telemedicine":
-      return "Telemedicine";
-    case "medical_travel":
-      return "Medical travel";
-    case "fly_doctor":
-      return "Fly the doctor";
-    default:
-      return m ?? "—";
+    case "remote": return "Remote second opinion";
+    case "telemedicine": return "Telemedicine";
+    case "medical_travel": return "Medical travel";
+    case "fly_doctor": return "Fly the doctor";
+    default: return m ?? "—";
   }
+}
+
+function timeAgo(iso: string) {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 export default async function PatientConnectionsPage() {
   const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
+  const { data: { user } } = await supabase.auth.getUser();
   if (!user) redirect("/signin");
 
   const { data: profile } = await supabase
@@ -76,18 +36,14 @@ export default async function PatientConnectionsPage() {
     .eq("id", user.id)
     .maybeSingle();
 
-  if (profile?.role !== "patient") {
-    redirect(dashboardPathForRole(profile?.role));
-  }
+  if (profile?.role !== "patient") redirect(dashboardPathForRole(profile?.role));
 
   const access = await hasActivePlatformAccess(supabase, user.id);
   if (!access) redirect("/onboarding/subscription");
 
   const { data: rows } = await supabase
     .from("connections")
-    .select(
-      "id, specialist_id, preferred_mode, status, created_at, specialist_profiles(specialty)",
-    )
+    .select("id, specialist_id, preferred_mode, status, created_at, message, specialist_profiles(specialty)")
     .eq("patient_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -105,9 +61,7 @@ export default async function PatientConnectionsPage() {
 
   const connections = list.map((r) => {
     const raw = r.specialist_profiles as unknown;
-    const sp = (Array.isArray(raw) ? raw[0] : raw) as {
-      specialty: string | null;
-    } | null;
+    const sp = (Array.isArray(raw) ? raw[0] : raw) as { specialty: string | null } | null;
     return {
       id: r.id,
       specialist_name: nameBy.get(r.specialist_id) ?? "Specialist",
@@ -115,67 +69,143 @@ export default async function PatientConnectionsPage() {
       preferred_mode: r.preferred_mode,
       status: r.status,
       created_at: r.created_at,
+      message: r.message,
     };
   });
 
-  return (
-    <main className="mx-auto max-w-3xl px-4 py-8">
-      <div className="mb-6">
-        <Link
-          href="/dashboard"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Back to dashboard
-        </Link>
-      </div>
-      <h1 className="text-2xl font-semibold tracking-tight">Connections</h1>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Track requests you have sent to specialists.
-      </p>
+  const accepted = connections.filter((c) => c.status === "accepted");
+  const pending = connections.filter((c) => c.status === "pending");
+  const archived = connections.filter((c) => c.status === "declined" || c.status === "expired");
 
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle className="text-lg">Your connections</CardTitle>
-          <CardDescription>Newest first.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {connections.length === 0 ? (
-            <div className="space-y-2 py-2 text-center sm:text-left">
-              <p className="text-sm font-medium text-foreground">No connections yet</p>
-              <p className="text-sm text-muted-foreground">
-                Open one of your cases, review match results, and send a connection request to a
-                specialist. Accepted requests appear here with a link to messages.
-              </p>
-            </div>
-          ) : (
-            <ul className="divide-y">
-              {connections.map((c) => (
-                <li
-                  key={c.id}
-                  className="flex flex-col gap-3 py-4 first:pt-0 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium">{c.specialist_name}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {c.specialty
-                        ? `${c.specialty.charAt(0).toUpperCase() + c.specialty.slice(1)} · `
-                        : ""}
-                      {modeLabel(c.preferred_mode)} ·{" "}
-                      {new Date(c.created_at).toLocaleDateString()}
-                    </p>
-                    <div className="mt-2">{statusBadge(c.status)}</div>
+  return (
+    <main className="mx-auto max-w-2xl px-4 py-8">
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <Link href="/dashboard" className="text-sm text-muted-foreground hover:text-foreground">
+            ← Dashboard
+          </Link>
+          <h1 className="mt-2 text-2xl font-bold tracking-tight">Messages</h1>
+          <p className="text-sm text-muted-foreground">
+            Your specialist connections and conversations.
+          </p>
+        </div>
+      </div>
+
+      {/* Active message threads */}
+      {accepted.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Active conversations
+          </h2>
+          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            {accepted.map((c, i) => (
+              <Link
+                key={c.id}
+                href={`/connections/${c.id}/messages`}
+                className={`flex items-center gap-4 px-4 py-4 transition-colors hover:bg-muted/50 ${
+                  i !== 0 ? "border-t" : ""
+                }`}
+              >
+                {/* Avatar */}
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
+                  {c.specialist_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                {/* Info */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-foreground truncate">{c.specialist_name}</p>
+                    <span className="shrink-0 text-xs text-muted-foreground">{timeAgo(c.created_at)}</span>
                   </div>
-                  {c.status === "accepted" ? (
-                    <Button variant="outline" size="sm" asChild>
-                      <Link href={`/connections/${c.id}/messages`}>View messages</Link>
-                    </Button>
-                  ) : null}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {c.specialty ? `${c.specialty.charAt(0).toUpperCase() + c.specialty.slice(1)} · ` : ""}
+                    {modeLabel(c.preferred_mode)}
+                  </p>
+                </div>
+                {/* Arrow */}
+                <span className="text-muted-foreground">›</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Pending requests */}
+      {pending.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Awaiting specialist response
+          </h2>
+          <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+            {pending.map((c, i) => (
+              <div
+                key={c.id}
+                className={`flex items-center gap-4 px-4 py-4 ${i !== 0 ? "border-t" : ""}`}
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-sm font-semibold text-amber-700 dark:bg-amber-950 dark:text-amber-300">
+                  {c.specialist_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-foreground truncate">{c.specialist_name}</p>
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-950 dark:text-amber-300">
+                      Pending
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground truncate">
+                    {c.specialty ? `${c.specialty.charAt(0).toUpperCase() + c.specialty.slice(1)} · ` : ""}
+                    {modeLabel(c.preferred_mode)} · {timeAgo(c.created_at)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Specialists are expected to respond within 48 hours.
+          </p>
+        </div>
+      )}
+
+      {/* Archived */}
+      {archived.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Archived
+          </h2>
+          <div className="overflow-hidden rounded-xl border bg-card opacity-60 shadow-sm">
+            {archived.map((c, i) => (
+              <div
+                key={c.id}
+                className={`flex items-center gap-4 px-4 py-4 ${i !== 0 ? "border-t" : ""}`}
+              >
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-semibold text-muted-foreground">
+                  {c.specialist_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-foreground truncate">{c.specialist_name}</p>
+                  <p className="text-sm text-muted-foreground capitalize">{c.status}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {connections.length === 0 && (
+        <div className="rounded-xl border bg-card px-6 py-12 text-center shadow-sm">
+          <p className="text-4xl">💬</p>
+          <h2 className="mt-4 font-semibold">No messages yet</h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            When you send a connection request to a specialist and they accept, your conversation will appear here.
+          </p>
+          <Link
+            href="/dashboard"
+            className="mt-4 inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Go to my cases →
+          </Link>
+        </div>
+      )}
     </main>
   );
 }
