@@ -6,9 +6,11 @@ import { ensureRoleSpecificProfile } from "@/lib/auth/role-profiles";
 import {
   type StripePricesPayload,
   patientPriceId,
+  specialistPriceId,
+  insurerPriceId,
   patientPricesAreConfigured,
   specialistPricesAreConfigured,
-  specialistListedPriceId,
+  insurerPricesAreConfigured,
 } from "@/lib/stripe/client-checkout";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +22,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { cn } from "@/lib/utils";
 
 type Billing = "monthly" | "annual";
 
@@ -103,6 +104,7 @@ export default function SubscriptionOnboardingPage() {
 
   const patientPricesOk = patientPricesAreConfigured(stripePrices);
   const specialistPricesOk = specialistPricesAreConfigured(stripePrices);
+  const insurerPricesOk = insurerPricesAreConfigured(stripePrices);
 
   const startCheckout = async (opts: {
     priceId: string;
@@ -151,6 +153,8 @@ export default function SubscriptionOnboardingPage() {
     }
   };
 
+  const showToggle = role === "patient" || role === "specialist" || role === "insurer";
+
   return (
     <div className="mx-auto max-w-5xl px-4 py-10">
       <div className="mb-8 space-y-2">
@@ -159,7 +163,9 @@ export default function SubscriptionOnboardingPage() {
         </h1>
         <p className="text-muted-foreground">
           {role === "specialist"
-            ? "Specialist plans unlock your profile on the platform. Select Listed to continue."
+            ? "Specialist plans unlock your profile on the platform. Select a plan to continue."
+            : role === "insurer"
+            ? "Insurer plans provide access to the CareMatch platform for your organisation."
             : "CareMatch Global does not offer a free tier. Select a plan to continue."}
         </p>
       </div>
@@ -174,31 +180,32 @@ export default function SubscriptionOnboardingPage() {
         </div>
       )}
 
-      {(role === "patient" || role === "specialist") && pricesLoading && (
+      {showToggle && pricesLoading && (
         <p className="mb-6 text-sm text-muted-foreground">
           Loading checkout configuration…
         </p>
       )}
 
-      {!pricesLoading &&
-        role === "patient" &&
-        !patientPricesOk &&
-        stripePrices && (
-          <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
-            Configure patient Stripe price IDs in environment variables (see .env.example) to
-            enable checkout.
-          </p>
-        )}
+      {!pricesLoading && role === "patient" && !patientPricesOk && stripePrices && (
+        <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
+          Configure patient Stripe price IDs in environment variables (see .env.example) to
+          enable checkout.
+        </p>
+      )}
 
-      {!pricesLoading &&
-        role === "specialist" &&
-        !specialistPricesOk &&
-        stripePrices && (
-          <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
-            Configure <code className="rounded bg-muted px-1">STRIPE_PRICE_SPECIALIST_LISTED_MONTHLY</code>{" "}
-            (or the public equivalent) to enable Listed checkout.
-          </p>
-        )}
+      {!pricesLoading && role === "specialist" && !specialistPricesOk && stripePrices && (
+        <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
+          Configure <code className="rounded bg-muted px-1">STRIPE_PRICE_SPECIALIST_MONTHLY</code>{" "}
+          (or the public equivalent) to enable specialist checkout.
+        </p>
+      )}
+
+      {!pricesLoading && role === "insurer" && !insurerPricesOk && stripePrices && (
+        <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
+          Configure <code className="rounded bg-muted px-1">STRIPE_PRICE_INSURER_MONTHLY</code>{" "}
+          (or the public equivalent) to enable insurer checkout.
+        </p>
+      )}
 
       {role === "admin" && (
         <p className="text-sm text-muted-foreground">
@@ -206,151 +213,101 @@ export default function SubscriptionOnboardingPage() {
         </p>
       )}
 
-      {role === "patient" && stripePrices && (
-        <>
-          <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-1">
-              <Label>Billing</Label>
-              <p className="text-sm text-muted-foreground">
-                Annual plans are billed once per year at the rates below.
-              </p>
-            </div>
-            <div className="inline-flex rounded-lg border p-1">
-              <Button
-                type="button"
-                variant={billing === "monthly" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setBilling("monthly")}
-              >
-                Monthly
-              </Button>
-              <Button
-                type="button"
-                variant={billing === "annual" ? "secondary" : "ghost"}
-                size="sm"
-                onClick={() => setBilling("annual")}
-              >
-                Annual
-              </Button>
-            </div>
+      {showToggle && stripePrices && (
+        <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1">
+            <Label>Billing</Label>
+            <p className="text-sm text-muted-foreground">
+              Annual plans are billed once per year at the rates below.
+            </p>
           </div>
-
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card className="flex flex-col">
-              <CardHeader>
-                <CardTitle>Essential</CardTitle>
-                <CardDescription>
-                  <span className="text-2xl font-semibold text-foreground">
-                    {billing === "monthly" ? "$49/mo" : "$470/yr"}
-                  </span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    {billing === "monthly"
-                      ? "Billed monthly"
-                      : "Billed annually ($470/year)"}
-                  </span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-2">
-                <p className="text-sm font-medium">What&apos;s included</p>
-                <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  <li>Core matching</li>
-                  <li>Email support</li>
-                  <li>Standard response times</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  disabled={!patientPricesOk || checkoutLoading !== null}
-                  onClick={() =>
-                    startCheckout({
-                      priceId: patientPriceId(
-                        stripePrices,
-                        "essential",
-                        billing,
-                      ),
-                      label: "essential",
-                      billingPeriod: billing,
-                    })
-                  }
-                >
-                  {checkoutLoading === "essential"
-                    ? "Redirecting…"
-                    : "Select Essential"}
-                </Button>
-              </CardFooter>
-            </Card>
-
-            <Card className="flex flex-col">
-              <CardHeader>
-                <CardTitle>Standard</CardTitle>
-                <CardDescription>
-                  <span className="text-2xl font-semibold text-foreground">
-                    {billing === "monthly" ? "$99/mo" : "$950/yr"}
-                  </span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    {billing === "monthly"
-                      ? "Billed monthly"
-                      : "Billed annually ($950/year)"}
-                  </span>
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="flex-1 space-y-2">
-                <p className="text-sm font-medium">What&apos;s included</p>
-                <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                  <li>Priority matching</li>
-                  <li>Case summaries</li>
-                  <li>Faster routing</li>
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  disabled={!patientPricesOk || checkoutLoading !== null}
-                  onClick={() =>
-                    startCheckout({
-                      priceId: patientPriceId(
-                        stripePrices,
-                        "standard",
-                        billing,
-                      ),
-                      label: "standard",
-                      billingPeriod: billing,
-                    })
-                  }
-                >
-                  {checkoutLoading === "standard"
-                    ? "Redirecting…"
-                    : "Select Standard"}
-                </Button>
-              </CardFooter>
-            </Card>
+          <div className="inline-flex rounded-lg border p-1">
+            <Button
+              type="button"
+              variant={billing === "monthly" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setBilling("monthly")}
+            >
+              Monthly
+            </Button>
+            <Button
+              type="button"
+              variant={billing === "annual" ? "secondary" : "ghost"}
+              size="sm"
+              onClick={() => setBilling("annual")}
+            >
+              Annual
+            </Button>
           </div>
-        </>
+        </div>
       )}
 
-      {role === "specialist" && stripePrices && (
-        <div className="grid gap-4 md:grid-cols-2">
+      {role === "patient" && stripePrices && (
+        <div className="grid gap-4 md:grid-cols-1 max-w-sm">
           <Card className="flex flex-col">
             <CardHeader>
-              <CardTitle>Listed</CardTitle>
+              <CardTitle>Patient Plan</CardTitle>
               <CardDescription>
                 <span className="text-2xl font-semibold text-foreground">
-                  $290/month
+                  {billing === "monthly" ? "$49/mo" : "$470/yr"}
                 </span>
                 <span className="mt-1 block text-sm text-muted-foreground">
-                  Billed monthly
+                  {billing === "monthly"
+                    ? "Billed monthly"
+                    : "Billed annually ($470/year)"}
                 </span>
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 space-y-2">
               <p className="text-sm font-medium">What&apos;s included</p>
               <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                <li>Searchable profile</li>
-                <li>Basic discovery</li>
-                <li>Standard placement</li>
+                <li>Precision matching to top specialists</li>
+                <li>Global specialist network access</li>
+                <li>Priority support</li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={!patientPricesOk || checkoutLoading !== null}
+                onClick={() =>
+                  startCheckout({
+                    priceId: patientPriceId(stripePrices, billing),
+                    label: "patient",
+                    billingPeriod: billing,
+                  })
+                }
+              >
+                {checkoutLoading === "patient" ? "Redirecting…" : "Select Patient Plan"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {role === "specialist" && stripePrices && (
+        <div className="grid gap-4 md:grid-cols-1 max-w-sm">
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Specialist Plan</CardTitle>
+              <CardDescription>
+                <span className="text-2xl font-semibold text-foreground">
+                  {billing === "monthly" ? "$99/mo" : "$950/yr"}
+                </span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {billing === "monthly"
+                    ? "Billed monthly"
+                    : "Billed annually ($950/year)"}
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-2">
+              <p className="text-sm font-medium">What&apos;s included</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                <li>Searchable specialist profile</li>
+                <li>Precision matching to patients</li>
+                <li>Priority placement in results</li>
               </ul>
             </CardContent>
             <CardFooter>
@@ -360,60 +317,67 @@ export default function SubscriptionOnboardingPage() {
                 disabled={!specialistPricesOk || checkoutLoading !== null}
                 onClick={() =>
                   startCheckout({
-                    priceId: specialistListedPriceId(stripePrices),
-                    label: "listed",
+                    priceId: specialistPriceId(stripePrices, billing),
+                    label: "specialist",
+                    billingPeriod: billing,
                   })
                 }
               >
-                {checkoutLoading === "listed" ? "Redirecting…" : "Select Listed"}
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <Card
-            className={cn(
-              "flex flex-col border-dashed opacity-70",
-              "bg-muted/30 text-muted-foreground",
-            )}
-            aria-disabled
-          >
-            <CardHeader>
-              <div className="flex items-center justify-between gap-2">
-                <CardTitle className="text-muted-foreground">Featured</CardTitle>
-                <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
-                  Coming soon
-                </span>
-              </div>
-              <CardDescription>
-                <span className="text-2xl font-semibold text-muted-foreground">
-                  $690/month
-                </span>
-                <span className="mt-1 block text-sm text-muted-foreground">
-                  Billed monthly
-                </span>
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="flex-1 space-y-2">
-              <p className="text-sm font-medium text-muted-foreground">Planned highlights</p>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                <li>Enhanced visibility in match results</li>
-                <li>Priority placement</li>
-                <li>Coming when checkout is enabled</li>
-              </ul>
-            </CardContent>
-            <CardFooter>
-              <Button className="w-full" variant="secondary" disabled>
-                Coming soon
+                {checkoutLoading === "specialist" ? "Redirecting…" : "Select Specialist Plan"}
               </Button>
             </CardFooter>
           </Card>
         </div>
       )}
 
-      {(role === "hospital" || role === "insurer") && (
+      {role === "insurer" && stripePrices && (
+        <div className="grid gap-4 md:grid-cols-1 max-w-sm">
+          <Card className="flex flex-col">
+            <CardHeader>
+              <CardTitle>Insurer Plan</CardTitle>
+              <CardDescription>
+                <span className="text-2xl font-semibold text-foreground">
+                  {billing === "monthly" ? "$199/mo" : "$1,910/yr"}
+                </span>
+                <span className="mt-1 block text-sm text-muted-foreground">
+                  {billing === "monthly"
+                    ? "Billed monthly"
+                    : "Billed annually ($1,910/year)"}
+                </span>
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 space-y-2">
+              <p className="text-sm font-medium">What&apos;s included</p>
+              <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
+                <li>Precision matching for your members</li>
+                <li>Organisation-level dashboard</li>
+                <li>Dedicated support</li>
+              </ul>
+            </CardContent>
+            <CardFooter>
+              <Button
+                className="w-full"
+                variant="outline"
+                disabled={!insurerPricesOk || checkoutLoading !== null}
+                onClick={() =>
+                  startCheckout({
+                    priceId: insurerPriceId(stripePrices, billing),
+                    label: "insurer",
+                    billingPeriod: billing,
+                  })
+                }
+              >
+                {checkoutLoading === "insurer" ? "Redirecting…" : "Select Insurer Plan"}
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      )}
+
+      {role === "hospital" && (
         <p className="text-sm text-muted-foreground">
-          Self-serve checkout for {role} accounts is not wired yet. Contact
-          CareMatch Global sales to enable billing for your organization.
+          Self-serve checkout for hospital accounts is not wired yet. Contact
+          CareMatch Global sales to enable billing for your organisation.
         </p>
       )}
     </div>

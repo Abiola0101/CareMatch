@@ -3,50 +3,67 @@
  */
 
 export type StripePricesPayload = {
-  patient: {
-    essential: { monthly: string; annual: string };
-    standard: { monthly: string; annual: string };
-  };
-  specialist: { listed: { monthly: string } };
+  patient: { monthly: string; annual: string };
+  specialist: { monthly: string; annual: string };
+  insurer: { monthly: string; annual: string };
   patientOverage: string;
 };
 
 export function patientPriceId(
   prices: StripePricesPayload,
-  tier: "essential" | "standard",
   billing: "monthly" | "annual",
 ): string {
-  if (tier === "essential") {
-    return billing === "monthly"
-      ? prices.patient.essential.monthly
-      : prices.patient.essential.annual;
-  }
-  return billing === "monthly"
-    ? prices.patient.standard.monthly
-    : prices.patient.standard.annual;
+  return billing === "monthly" ? prices.patient.monthly : prices.patient.annual;
 }
 
-export function specialistListedPriceId(prices: StripePricesPayload): string {
-  return prices.specialist.listed.monthly;
+export function specialistPriceId(
+  prices: StripePricesPayload,
+  billing: "monthly" | "annual",
+): string {
+  return billing === "monthly" ? prices.specialist.monthly : prices.specialist.annual;
 }
 
-/** Patient checkout: monthly tiers must be configured (annual optional until selected). */
+export function insurerPriceId(
+  prices: StripePricesPayload,
+  billing: "monthly" | "annual",
+): string {
+  return billing === "monthly" ? prices.insurer.monthly : prices.insurer.annual;
+}
+
+/** Patient checkout: monthly price must be configured. */
 export function patientPricesAreConfigured(prices: StripePricesPayload | null): boolean {
   if (!prices) {
     return false;
   }
-  return !!prices.patient.essential.monthly && !!prices.patient.standard.monthly;
+  return !!prices.patient.monthly;
 }
 
-/** Specialist Listed monthly price id from env / prices API. */
+/** Specialist checkout: monthly price must be configured. */
 export function specialistPricesAreConfigured(prices: StripePricesPayload | null): boolean {
   if (!prices) {
     return false;
   }
-  return !!prices.specialist.listed.monthly;
+  return !!prices.specialist.monthly;
 }
 
-/** True only when both patient and specialist subscription prices exist (rarely needed on the client). */
+/** Insurer checkout: monthly price must be configured. */
+export function insurerPricesAreConfigured(prices: StripePricesPayload | null): boolean {
+  if (!prices) {
+    return false;
+  }
+  return !!prices.insurer.monthly;
+}
+
+/** True only when patient, specialist, and insurer subscription prices all exist. */
 export function pricesAreConfigured(prices: StripePricesPayload | null): boolean {
-  return patientPricesAreConfigured(prices) && specialistPricesAreConfigured(prices);
+  return (
+    patientPricesAreConfigured(prices) &&
+    specialistPricesAreConfigured(prices) &&
+    insurerPricesAreConfigured(prices)
+  );
+}
+
+// Legacy alias kept for any callers that still reference specialistListedPriceId
+export function specialistListedPriceId(prices: StripePricesPayload): string {
+  return prices.specialist.monthly;
 }

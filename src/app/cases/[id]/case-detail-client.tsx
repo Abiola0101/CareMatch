@@ -633,7 +633,7 @@ export function CaseDetailClient({
                             <p className="font-semibold text-foreground">
                               Any country is possible — the only requirement is that the
                               receiving hospital completes a credentialing process for
-                              this specialist. CareMatch facilitates this.
+                              this specialist.
                             </p>
                           </>
                         ) : (
