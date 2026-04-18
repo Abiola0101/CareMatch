@@ -36,10 +36,7 @@ export default function SpecialistLayout({
               href="/specialist/connections"
               className="text-muted-foreground hover:text-foreground"
             >
-              Messages
-            </Link>
-            <Link href="/" className="text-muted-foreground hover:text-foreground">
-              Home
+              Connections
             </Link>
             <SignOutButton />
           </nav>

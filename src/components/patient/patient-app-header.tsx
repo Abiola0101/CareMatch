@@ -13,13 +13,7 @@ export function PatientAppHeader() {
             href="/connections"
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            Messages
-          </Link>
-          <Link
-            href="/"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
-            Home
+            Connections
           </Link>
           <SignOutButton />
         </div>
