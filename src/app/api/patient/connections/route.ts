@@ -3,7 +3,10 @@ import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import { stripe } from "@/lib/stripe";
-import { sendNewConnectionToSpecialist } from "@/lib/emails/connection-emails";
+import {
+  sendNewConnectionToSpecialist,
+  sendConnectionConfirmationToPatient,
+} from "@/lib/emails/connection-emails";
 
 export const dynamic = "force-dynamic";
 
@@ -343,6 +346,25 @@ export async function POST(request: Request) {
       });
     } catch (e) {
       console.error("[patient/connections POST] email", e);
+    }
+  }
+
+  const { data: patientProfile } = await admin
+    .from("profiles")
+    .select("email, full_name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (patientProfile?.email) {
+    try {
+      await sendConnectionConfirmationToPatient({
+        to: patientProfile.email,
+        patientFirstName:
+          (patientProfile.full_name as string | null)?.split(" ")[0] ?? "there",
+        specialistName: specProfile?.full_name ?? "the specialist",
+      });
+    } catch (e) {
+      console.error("[patient/connections POST] patient confirm email", e);
     }
   }
 

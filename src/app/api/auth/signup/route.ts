@@ -77,7 +77,7 @@ export async function POST(request: Request) {
     email,
     password,
     options: {
-      emailRedirectTo: `${appBase}/auth/callback`,
+      emailRedirectTo: `${appBase}/auth/callback?next=/onboarding/subscription`,
       data: {
         role,
         full_name: fullName.trim(),

@@ -68,6 +68,29 @@ export async function sendConnectionAcceptedToPatient(params: {
   });
 }
 
+export async function sendConnectionConfirmationToPatient(params: {
+  to: string;
+  patientFirstName: string;
+  specialistName: string;
+}): Promise<void> {
+  if (!canSend()) {
+    console.warn("[email] RESEND_API_KEY missing; skip patient enquiry confirm");
+    return;
+  }
+  await resend.emails.send({
+    from,
+    to: params.to,
+    subject: "Your enquiry has been sent",
+    text: [
+      `Hi ${params.patientFirstName},`,
+      ``,
+      `Your connection request has been sent to ${params.specialistName}. They have been notified and will respond within 48 hours.`,
+      ``,
+      `You can track your connections at: https://www.carematchglobal.com/connections`,
+    ].join("\n"),
+  });
+}
+
 export async function sendConnectionDeclinedToPatient(params: {
   to: string;
   patientFirstName: string;

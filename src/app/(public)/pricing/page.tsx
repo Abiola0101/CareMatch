@@ -84,8 +84,8 @@ export default function PricingPage() {
           Simple, transparent pricing
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Three plans. No hidden fees. Clinical ranking is identical across all
-          plans — never pay-to-win.
+          Three plans. No hidden fees. Ranking is based on clinical fit only —
+          identical across all plans.
         </p>
       </div>
 

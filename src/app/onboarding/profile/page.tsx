@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/client";
+import { dashboardPathForRole } from "@/lib/auth/dashboard";
 import { ageGroupFromDateOfBirth, type PatientAgeGroup } from "@/lib/patient/age-group";
 import { COUNTRY_OPTIONS } from "@/lib/data/countries";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,18 @@ export default function PatientProfileOnboardingPage() {
       if (!user || cancelled) {
         return;
       }
+
+      // Role guard: only patients should access this page
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!cancelled && profile?.role !== "patient") {
+        router.replace(dashboardPathForRole(profile?.role));
+        return;
+      }
+
       const { data: row, error } = await supabase
         .from("patient_profiles")
         .select(
@@ -155,7 +168,7 @@ export default function PatientProfileOnboardingPage() {
       return;
     }
 
-    router.push("/cases/new");
+    router.push("/dashboard");
     router.refresh();
   };
 

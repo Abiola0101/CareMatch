@@ -69,7 +69,7 @@ export default function MarketingHomePage() {
           {/* Trust badge */}
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
             <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-            Clinical fit is the only ranking criteria — never pay-to-win
+            Ranking is based on clinical fit only
           </div>
 
           <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-slate-900 dark:text-slate-50 sm:text-5xl md:text-6xl">
@@ -78,7 +78,7 @@ export default function MarketingHomePage() {
           <p className="mt-6 max-w-2xl text-lg text-slate-600 dark:text-slate-400 sm:text-xl">
             CareMatch searches globally across cardiology, oncology, and
             orthopaedics. Every ranking is driven purely by clinical fit —
-            no sponsored placement, no pay-to-rank.
+            no sponsored placement, no paid boosting.
           </p>
           <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
             <Button size="lg" className="px-8 text-base shadow-sm" asChild>
@@ -219,7 +219,7 @@ export default function MarketingHomePage() {
         </h2>
         <p className="mx-auto mt-3 max-w-2xl text-center text-muted-foreground">
           Examples of the calibre of experts on CareMatch Global. Rankings are
-          based on clinical fit only — never on who pays more.
+          based on clinical fit only.
         </p>
         <div className="mt-10 grid gap-6 md:grid-cols-3">
           {showcaseSpecialists.map((s) => (
@@ -316,7 +316,7 @@ export default function MarketingHomePage() {
               {
                 n: "3",
                 t: "Get matched",
-                d: "See globally ranked specialists by clinical fit — transparent criteria, no pay-to-rank.",
+                d: "See globally ranked specialists by clinical fit — transparent criteria, clinical fit is the only ranking criteria.",
               },
               {
                 n: "4",
@@ -353,7 +353,7 @@ export default function MarketingHomePage() {
           </div>
           <div className="relative">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-3 py-1 text-xs font-medium text-white/80">
-              No pay-to-win · Pure clinical fit
+              Clinical fit is the only ranking criteria
             </div>
             <h2 className="text-3xl font-bold tracking-tight md:text-4xl">
               Ready to find your specialist?
