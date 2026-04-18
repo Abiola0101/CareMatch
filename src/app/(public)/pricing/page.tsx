@@ -50,7 +50,7 @@ const plans = [
       "Profile analytics dashboard",
     ],
     cta: "Join as a specialist",
-    highlight: true,
+    highlight: false,
   },
   {
     id: "insurer",
