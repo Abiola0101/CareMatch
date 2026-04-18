@@ -15,14 +15,21 @@ export function SiteHeader({ className }: { className?: string }) {
     >
       <div className="mx-auto flex min-h-14 max-w-6xl flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:py-0">
         <div className="flex items-center justify-between gap-4 sm:justify-start">
-          <Link href="/" className="text-lg font-semibold tracking-tight">
+          <Link
+            href="/"
+            className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+          >
+            {/* Medical cross accent */}
+            <span className="flex h-6 w-6 items-center justify-center rounded bg-primary text-[11px] font-bold text-primary-foreground leading-none select-none">
+              ✚
+            </span>
             CareMatch Global
           </Link>
           <div className="flex items-center gap-2 sm:hidden">
             <Button variant="ghost" size="sm" asChild>
               <Link href="/signin">Sign in</Link>
             </Button>
-            <Button size="sm" asChild>
+            <Button size="sm" className="font-semibold" asChild>
               <Link href="/signup">Get started</Link>
             </Button>
           </div>
@@ -45,7 +52,7 @@ export function SiteHeader({ className }: { className?: string }) {
           <Button variant="ghost" size="sm" asChild>
             <Link href="/signin">Sign in</Link>
           </Button>
-          <Button size="sm" asChild>
+          <Button size="sm" className="font-semibold shadow-sm" asChild>
             <Link href="/signup">Get started</Link>
           </Button>
         </div>

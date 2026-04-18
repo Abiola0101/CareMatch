@@ -6,131 +6,222 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
 
 type Billing = "monthly" | "annual";
+
+const plans = [
+  {
+    id: "patient",
+    name: "Patient Plan",
+    icon: "🧑‍⚕️",
+    monthly: "$49",
+    annual: "$470",
+    monthlyRaw: 49,
+    annualRaw: 470,
+    tagline: "For individuals seeking the best clinical match globally.",
+    features: [
+      "Global specialist search across 3 specialties",
+      "Clinical-fit ranking — transparent criteria",
+      "4 care modes: remote opinion, telemedicine, travel, fly-the-doctor",
+      "Case management dashboard",
+      "Email support",
+    ],
+    cta: "Start as a patient",
+    highlight: false,
+  },
+  {
+    id: "specialist",
+    name: "Specialist Plan",
+    icon: "👨‍🔬",
+    monthly: "$99",
+    annual: "$950",
+    monthlyRaw: 99,
+    annualRaw: 950,
+    tagline: "For clinicians who want to be found by patients who need them.",
+    features: [
+      "Verified specialist profile",
+      "Appear in global search results",
+      "Clinical-fit matched — based on your actual expertise",
+      "Secure case messaging",
+      "Profile analytics dashboard",
+    ],
+    cta: "Join as a specialist",
+    highlight: true,
+  },
+  {
+    id: "insurer",
+    name: "Insurer Plan",
+    icon: "🏢",
+    monthly: "$199",
+    annual: "$1,910",
+    monthlyRaw: 199,
+    annualRaw: 1910,
+    tagline: "For insurers and care-coordination teams managing member cases.",
+    features: [
+      "Multi-member case management",
+      "Bulk matching across covered lives",
+      "Reporting and audit trail",
+      "Dedicated account support",
+      "Custom integration available",
+    ],
+    cta: "Contact us",
+    highlight: false,
+  },
+];
 
 export default function PricingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-12 md:py-20">
+      {/* Header */}
       <div className="text-center">
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
-          Pricing
+        <h1 className="text-3xl font-bold tracking-tight md:text-4xl">
+          Simple, transparent pricing
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Transparent plans for patients and specialists. Clinical ranking is never
-          pay-to-win.
+          Three plans. No hidden fees. Clinical ranking is identical across all
+          plans — never pay-to-win.
         </p>
       </div>
 
-      <div className="mt-10 mb-8 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-center">
-        <div className="space-y-1 text-center sm:text-left">
-          <Label>Patient billing</Label>
-          <p className="text-sm text-muted-foreground">
-            Toggle monthly or annual for patient tiers.
-          </p>
-        </div>
-        <div className="inline-flex justify-center rounded-lg border p-1">
-          <Button
+      {/* Billing toggle */}
+      <div className="mt-10 flex flex-col items-center gap-3">
+        <div className="inline-flex rounded-lg border bg-muted p-1">
+          <button
             type="button"
-            variant={billing === "monthly" ? "secondary" : "ghost"}
-            size="sm"
             onClick={() => setBilling("monthly")}
+            className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
+              billing === "monthly"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             Monthly
-          </Button>
-          <Button
+          </button>
+          <button
             type="button"
-            variant={billing === "annual" ? "secondary" : "ghost"}
-            size="sm"
             onClick={() => setBilling("annual")}
+            className={`rounded-md px-5 py-2 text-sm font-medium transition-colors ${
+              billing === "annual"
+                ? "bg-background text-foreground shadow-sm"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
           >
             Annual
-          </Button>
+            <span className="ml-1.5 rounded-full bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900 dark:text-green-300">
+              Save ~20%
+            </span>
+          </button>
         </div>
       </div>
 
-      <h2 className="mb-4 text-lg font-semibold">Patients</h2>
-      <div className="grid gap-6 md:grid-cols-2">
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Essential</CardTitle>
-            <CardDescription>
-              <span className="text-2xl font-semibold text-foreground">
-                {billing === "monthly" ? "$49/mo" : "$470/yr"}
-              </span>
-              <span className="mt-1 block text-sm text-muted-foreground">
-                {billing === "monthly"
-                  ? "Billed monthly"
-                  : "Billed annually ($470/year)"}
-              </span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 text-sm text-muted-foreground">
-            Core matching, email support, and standard response times.
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full" asChild>
-              <Link href="/signup">Get started</Link>
-            </Button>
-          </CardFooter>
-        </Card>
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Standard</CardTitle>
-            <CardDescription>
-              <span className="text-2xl font-semibold text-foreground">
-                {billing === "monthly" ? "$99/mo" : "$950/yr"}
-              </span>
-              <span className="mt-1 block text-sm text-muted-foreground">
-                {billing === "monthly"
-                  ? "Billed monthly"
-                  : "Billed annually ($950/year)"}
-              </span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 text-sm text-muted-foreground">
-            Priority matching, case summaries, and faster routing.
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full" asChild>
-              <Link href="/signup">Get started</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+      {/* Plans grid */}
+      <div className="mt-10 grid gap-6 md:grid-cols-3">
+        {plans.map((plan) => (
+          <Card
+            key={plan.id}
+            className={`relative flex flex-col ${
+              plan.highlight
+                ? "border-primary shadow-md ring-1 ring-primary"
+                : ""
+            }`}
+          >
+            {plan.highlight && (
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="rounded-full bg-primary px-3 py-1 text-[11px] font-semibold text-primary-foreground">
+                  Most popular
+                </span>
+              </div>
+            )}
+            <CardHeader className="pb-4">
+              <div className="mb-2 text-2xl">{plan.icon}</div>
+              <CardTitle className="text-xl">{plan.name}</CardTitle>
+              <p className="mt-1 text-sm text-muted-foreground">
+                {plan.tagline}
+              </p>
+              <div className="mt-4">
+                <span className="text-4xl font-bold text-foreground">
+                  {billing === "monthly" ? plan.monthly : plan.annual}
+                </span>
+                <span className="ml-1 text-sm text-muted-foreground">
+                  {billing === "monthly" ? "/mo" : "/yr"}
+                </span>
+                {billing === "annual" && (
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Billed annually — equivalent to{" "}
+                    <span className="font-medium text-foreground">
+                      ${Math.round(plan.annualRaw / 12)}/mo
+                    </span>
+                  </p>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="flex-1">
+              <ul className="space-y-2.5">
+                {plan.features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-sm">
+                    <span className="mt-0.5 text-green-500">✓</span>
+                    <span className="text-muted-foreground">{f}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+            <CardFooter className="pt-4">
+              <Button
+                className="w-full"
+                variant={plan.highlight ? "default" : "outline"}
+                asChild
+              >
+                <Link href={plan.id === "insurer" ? "/contact" : "/signup"}>
+                  {plan.cta}
+                </Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
       </div>
 
-      <h2 className="mb-4 mt-14 text-lg font-semibold">Specialists</h2>
-      <div className="grid gap-6 md:max-w-md">
-        <Card className="flex flex-col">
-          <CardHeader>
-            <CardTitle>Listed</CardTitle>
-            <CardDescription>
-              <span className="text-2xl font-semibold text-foreground">
-                $290/mo
+      {/* Matching quality callout */}
+      <div className="mt-10 rounded-xl border border-blue-200 bg-blue-50 p-6 dark:border-blue-800 dark:bg-blue-950/50">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">⚖️</span>
+          <div>
+            <p className="font-semibold text-blue-900 dark:text-blue-100">
+              Matching quality is identical across all plans
+            </p>
+            <p className="mt-1 text-sm text-blue-700 dark:text-blue-300">
+              Every subscriber — Patient, Specialist, or Insurer — receives the
+              same clinical-fit ranking algorithm. Specialists cannot pay for
+              better placement. Patients with higher-tier plans are not shown
+              more results — they are shown the same honest match list as
+              everyone else.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Overage note */}
+      <div className="mt-6 rounded-xl border bg-muted/50 p-6">
+        <div className="flex items-start gap-3">
+          <span className="text-xl">📋</span>
+          <div>
+            <p className="font-semibold">Patient connection overage</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Each Patient Plan includes a monthly connection allowance.
+              Additional specialist connections beyond the included allowance
+              are billed at{" "}
+              <span className="font-semibold text-foreground">
+                $35 per connection
               </span>
-              <span className="mt-1 block text-sm text-muted-foreground">
-                Billed monthly
-              </span>
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 text-sm text-muted-foreground">
-            Searchable profile, basic discovery, and standard placement in the
-            network.
-          </CardContent>
-          <CardFooter>
-            <Button className="w-full" asChild>
-              <Link href="/signup">Get started</Link>
-            </Button>
-          </CardFooter>
-        </Card>
+              . You will be notified before any overage is charged.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );
