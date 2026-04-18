@@ -71,7 +71,7 @@ export async function PUT(
 
   const { data: row, error: fe } = await admin
     .from("connections")
-    .select("id, status, patient_id, specialist_id")
+    .select("id, status, patient_id, specialist_id, specialist_first_responded_at")
     .eq("id", connectionId)
     .eq("specialist_id", user.id)
     .maybeSingle();
@@ -89,9 +89,19 @@ export async function PUT(
 
   const nextStatus = action === "accept" ? "accepted" : "declined";
 
+  // Record first response time only if not already set
+  const responseTimestamp = row.specialist_first_responded_at === null
+    ? new Date().toISOString()
+    : undefined;
+
+  const updatePayload: Record<string, unknown> = { status: nextStatus };
+  if (responseTimestamp !== undefined) {
+    updatePayload.specialist_first_responded_at = responseTimestamp;
+  }
+
   const { error: upErr } = await admin
     .from("connections")
-    .update({ status: nextStatus })
+    .update(updatePayload)
     .eq("id", connectionId)
     .eq("specialist_id", user.id);
 
