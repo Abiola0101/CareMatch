@@ -29,41 +29,25 @@ export default function SubscriptionOnboardingPage() {
   const [billing, setBilling] = useState<Billing>("monthly");
   const [role, setRole] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
-  const [stripePrices, setStripePrices] = useState<StripePricesPayload | null>(
-    null,
-  );
-  const [pricesLoading, setPricesLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadPrices() {
-      setPricesLoading(true);
-      try {
-        const res = await fetch("/api/stripe/prices", { credentials: "same-origin" });
-        if (!res.ok) {
-          return;
-        }
-        const data = (await res.json()) as StripePricesPayload;
-        if (!cancelled) {
-          setStripePrices(data);
-        }
-      } catch {
-        /* ignore */
-      } finally {
-        if (!cancelled) {
-          setPricesLoading(false);
-        }
-      }
-    }
-
-    loadPrices();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Read price IDs directly from NEXT_PUBLIC_ env vars (embedded at build time — always reliable)
+  const stripePrices: StripePricesPayload = {
+    patient: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_PATIENT_MONTHLY ?? "",
+      annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ANNUAL ?? "",
+    },
+    specialist: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPECIALIST_MONTHLY ?? "",
+      annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_SPECIALIST_ANNUAL ?? "",
+    },
+    insurer: {
+      monthly: process.env.NEXT_PUBLIC_STRIPE_PRICE_INSURER_MONTHLY ?? "",
+      annual: process.env.NEXT_PUBLIC_STRIPE_PRICE_INSURER_ANNUAL ?? "",
+    },
+    patientOverage: process.env.NEXT_PUBLIC_STRIPE_PRICE_PATIENT_OVERAGE ?? "",
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -180,32 +164,6 @@ export default function SubscriptionOnboardingPage() {
         </div>
       )}
 
-      {showToggle && pricesLoading && (
-        <p className="mb-6 text-sm text-muted-foreground">
-          Loading checkout configuration…
-        </p>
-      )}
-
-      {!pricesLoading && role === "patient" && !patientPricesOk && stripePrices && (
-        <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
-          Configure patient Stripe price IDs in environment variables (see .env.example) to
-          enable checkout.
-        </p>
-      )}
-
-      {!pricesLoading && role === "specialist" && !specialistPricesOk && stripePrices && (
-        <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
-          Configure <code className="rounded bg-muted px-1">STRIPE_PRICE_SPECIALIST_MONTHLY</code>{" "}
-          (or the public equivalent) to enable specialist checkout.
-        </p>
-      )}
-
-      {!pricesLoading && role === "insurer" && !insurerPricesOk && stripePrices && (
-        <p className="mb-6 text-sm text-amber-800 dark:text-amber-200">
-          Configure <code className="rounded bg-muted px-1">STRIPE_PRICE_INSURER_MONTHLY</code>{" "}
-          (or the public equivalent) to enable insurer checkout.
-        </p>
-      )}
 
       {role === "admin" && (
         <p className="text-sm text-muted-foreground">
@@ -261,9 +219,9 @@ export default function SubscriptionOnboardingPage() {
             <CardContent className="flex-1 space-y-2">
               <p className="text-sm font-medium">What&apos;s included</p>
               <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-                <li>Precision matching to top specialists</li>
-                <li>Global specialist network access</li>
-                <li>Priority support</li>
+                <li>Precision matching to top specialists globally</li>
+                <li>Direct enquiry to matched specialists</li>
+                <li>Case submission and tracking</li>
               </ul>
             </CardContent>
             <CardFooter>
