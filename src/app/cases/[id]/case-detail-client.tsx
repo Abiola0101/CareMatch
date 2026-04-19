@@ -773,7 +773,7 @@ export function CaseDetailClient({
                                 </div>
                                 {availWarn && (
                                   <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
-                                    This specialist's typical wait time may not meet your stated urgency. They are still a strong clinical match — contact them to discuss expedited availability.
+                                    This specialist&apos;s typical wait time may not meet your stated urgency. They are still a strong clinical match — contact them to discuss expedited availability.
                                   </p>
                                 )}
                               </div>
