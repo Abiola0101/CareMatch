@@ -110,10 +110,23 @@ export default async function SpecialistDashboardPage() {
         </p>
       </div>
 
-      {!spec.verified && (
+      {completion < 50 && (
+        <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold text-foreground">Complete your profile to appear in search results</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Patients can only be matched to specialists with a complete profile. Add your specialty, availability, and care modes.
+            </p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href="/specialist/profile">Complete profile →</Link>
+          </Button>
+        </div>
+      )}
+
+      {completion >= 50 && !spec.verified && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100">
-          Your profile is not yet verified. Complete your details and upload documents so our team can
-          review your listing.
+          Your profile is not yet verified. Upload your credentials so our team can review and activate your listing.
         </div>
       )}
 
