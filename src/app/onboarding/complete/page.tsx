@@ -68,14 +68,18 @@ export default function OnboardingCompletePage() {
       ? "/onboarding/profile"
       : role === "specialist"
         ? "/specialist/profile"
-        : dashboardPathForRole(role);
+        : role === "insurer"
+          ? "/insurer/profile"
+          : dashboardPathForRole(role);
 
   const cta =
     role === "patient"
       ? "Continue to your profile"
       : role === "specialist"
         ? "Set up my profile"
-        : "Go to my dashboard";
+        : role === "insurer"
+          ? "Set up my organisation"
+          : "Go to my dashboard";
 
   if (status === "polling") {
     return (
@@ -143,7 +147,9 @@ export default function OnboardingCompletePage() {
       <p className="mt-3 text-muted-foreground">
         {role === "specialist"
           ? "Thank you. Complete your profile so patients can find and match with you."
-          : "Thank you. You can continue to your CareMatch Global dashboard."}
+          : role === "insurer"
+            ? "Thank you. Add your company details to complete your account setup."
+            : "Thank you. You can continue to your CareMatch Global dashboard."}
       </p>
       <Button className="mt-8" asChild size="lg">
         <Link href={dest}>{cta}</Link>

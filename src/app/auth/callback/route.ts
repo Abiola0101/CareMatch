@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { ensureRoleSpecificProfile } from "@/lib/auth/role-profiles";
+import { resolveAuthenticatedDestination } from "@/lib/auth/post-auth-redirect";
 
 function safeNextPath(next: string | null): string {
   if (!next || !next.startsWith("/") || next.startsWith("//")) {
@@ -67,9 +68,24 @@ export async function GET(request: Request) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (profile?.role) {
-      await ensureRoleSpecificProfile(supabase, user.id, profile.role);
+    if (!profile?.role) {
+      // New OAuth user — needs to pick a role
+      return NextResponse.redirect(new URL("/onboarding/role", requestUrl.origin));
     }
+
+    await ensureRoleSpecificProfile(supabase, user.id, profile.role);
+
+    // If the caller explicitly provided a `next` param, honour it;
+    // otherwise resolve the best destination based on the user's state.
+    const rawNext = requestUrl.searchParams.get("next");
+    const explicitNext = rawNext && rawNext !== "/" ? safeNextPath(rawNext) : null;
+
+    if (explicitNext && explicitNext !== "/") {
+      return NextResponse.redirect(new URL(explicitNext, requestUrl.origin));
+    }
+
+    const dest = await resolveAuthenticatedDestination(supabase, user.id);
+    return NextResponse.redirect(new URL(dest, requestUrl.origin));
   }
 
   return NextResponse.redirect(new URL(next, requestUrl.origin));

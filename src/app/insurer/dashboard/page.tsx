@@ -88,9 +88,27 @@ export default async function InsurerDashboardPage() {
   return (
     <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
       <div>
-        <h1 className="text-3xl font-semibold tracking-tight">{ip.company_name}</h1>
+        <h1 className="text-3xl font-semibold tracking-tight">
+          {ip.company_name && ip.company_name !== "Pending"
+            ? ip.company_name
+            : "Your organisation"}
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">Insurer workspace</p>
       </div>
+
+      {(!ip.company_name || ip.company_name === "Pending") && (
+        <div className="flex flex-col gap-3 rounded-lg border border-primary/30 bg-primary/5 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-semibold text-foreground">Complete your organisation setup</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Add your company name and contact details to activate your insurer account.
+            </p>
+          </div>
+          <Button asChild className="shrink-0">
+            <Link href="/insurer/profile">Complete setup →</Link>
+          </Button>
+        </div>
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
