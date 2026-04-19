@@ -10,7 +10,7 @@ const bodySchema = z.object({
   email: z.string().email("Enter a valid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   fullName: z.string().min(1, "Full name is required"),
-  role: z.enum(["patient", "specialist", "hospital", "insurer"]),
+  role: z.enum(["patient", "specialist", "insurer"]),
   termsAccepted: z.literal(true),
 });
 

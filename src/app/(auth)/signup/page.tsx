@@ -23,11 +23,6 @@ const roles: {
     description: "I want to be discoverable to patients",
   },
   {
-    value: "hospital",
-    label: "Hospital",
-    description: "I want to list as a verified practice location",
-  },
-  {
     value: "insurer",
     label: "Insurer",
     description: "I want to use the matching engine for policyholders",

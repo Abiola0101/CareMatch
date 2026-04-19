@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 
-export type SignupRole = "patient" | "specialist" | "hospital" | "insurer";
+export type SignupRole = "patient" | "specialist" | "insurer";
 
 /**
  * Ensures patient/specialist/hospital/insurer child row exists using the service role
@@ -42,15 +42,6 @@ export async function ensureRoleChildProfilesWithServiceRole(
       });
       return { error: ignoreConflict(error) ? new Error(error!.message) : null };
     }
-    case "hospital": {
-      const { error } = await admin.from("hospital_profiles").insert({
-        id: userId,
-        institution_name: "Pending",
-        city: "Pending",
-        country: "Pending",
-      });
-      return { error: ignoreConflict(error) ? new Error(error!.message) : null };
-    }
     case "insurer": {
       const { error } = await admin.from("insurer_profiles").insert({
         id: userId,
@@ -78,13 +69,6 @@ export async function insertRoleSpecificProfile(
         verified: false,
         is_accepting: true,
       });
-    case "hospital":
-      return supabase.from("hospital_profiles").insert({
-        id: userId,
-        institution_name: "Pending",
-        city: "Pending",
-        country: "Pending",
-      });
     case "insurer":
       return supabase.from("insurer_profiles").insert({
         id: userId,
@@ -102,7 +86,6 @@ export async function ensureRoleSpecificProfile(
   if (
     role !== "patient" &&
     role !== "specialist" &&
-    role !== "hospital" &&
     role !== "insurer"
   ) {
     return { error: null };
@@ -113,9 +96,7 @@ export async function ensureRoleSpecificProfile(
       ? "patient_profiles"
       : role === "specialist"
         ? "specialist_profiles"
-        : role === "hospital"
-          ? "hospital_profiles"
-          : "insurer_profiles";
+        : "insurer_profiles";
 
   const { data: existing } = await supabase
     .from(table)

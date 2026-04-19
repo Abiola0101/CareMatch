@@ -14,24 +14,18 @@ export const dynamic = "force-dynamic";
 const bodySchema = z.object({
   priceId: z.string().min(1),
   userId: z.string().uuid(),
-  userRole: z.enum(["patient", "specialist", "hospital", "insurer", "admin"]),
+  userRole: z.enum(["patient", "specialist", "insurer", "admin"]),
   billingPeriod: z.enum(["monthly", "annual"]).optional(),
 });
 
 function tableForRole(
-  role: "patient" | "specialist" | "hospital" | "insurer",
-):
-  | "patient_profiles"
-  | "specialist_profiles"
-  | "hospital_profiles"
-  | "insurer_profiles" {
+  role: "patient" | "specialist" | "insurer",
+): "patient_profiles" | "specialist_profiles" | "insurer_profiles" {
   switch (role) {
     case "patient":
       return "patient_profiles";
     case "specialist":
       return "specialist_profiles";
-    case "hospital":
-      return "hospital_profiles";
     case "insurer":
       return "insurer_profiles";
   }
@@ -128,7 +122,6 @@ export async function POST(request: Request) {
   if (
     profile.role !== "patient" &&
     profile.role !== "specialist" &&
-    profile.role !== "hospital" &&
     profile.role !== "insurer"
   ) {
     return NextResponse.json({ error: "Invalid role for checkout." }, { status: 400 });

@@ -7,19 +7,13 @@ import { dashboardPathForRole } from "@/lib/auth/dashboard";
 export const dynamic = "force-dynamic";
 
 function tableForRole(
-  role: "patient" | "specialist" | "hospital" | "insurer",
-):
-  | "patient_profiles"
-  | "specialist_profiles"
-  | "hospital_profiles"
-  | "insurer_profiles" {
+  role: "patient" | "specialist" | "insurer",
+): "patient_profiles" | "specialist_profiles" | "insurer_profiles" {
   switch (role) {
     case "patient":
       return "patient_profiles";
     case "specialist":
       return "specialist_profiles";
-    case "hospital":
-      return "hospital_profiles";
     case "insurer":
       return "insurer_profiles";
   }
@@ -79,7 +73,6 @@ export async function POST() {
   if (
     role !== "patient" &&
     role !== "specialist" &&
-    role !== "hospital" &&
     role !== "insurer"
   ) {
     return NextResponse.json(

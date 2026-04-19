@@ -332,12 +332,6 @@ export default function SubscriptionOnboardingPage() {
         </div>
       )}
 
-      {role === "hospital" && (
-        <p className="text-sm text-muted-foreground">
-          Self-serve checkout for hospital accounts is not wired yet. Contact
-          CareMatch Global sales to enable billing for your organisation.
-        </p>
-      )}
     </div>
   );
 }
