@@ -68,7 +68,7 @@ const plans = [
       "Dedicated account support",
       "Custom integration available",
     ],
-    cta: "Contact us",
+    cta: "Contact us for access",
     highlight: false,
   },
 ];
