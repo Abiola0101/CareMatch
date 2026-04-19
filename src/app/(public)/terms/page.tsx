@@ -8,7 +8,7 @@ export default function TermsPage() {
         <section className="space-y-3">
           <h2 className="text-base font-semibold text-foreground">1. Acceptance</h2>
           <p>
-            By creating an account or using CareMatch Global (the "Platform"), you agree
+            By creating an account or using CareMatch Global (the &ldquo;Platform&rdquo;), you agree
             to these Terms of Service. If you do not agree, do not use the Platform.
           </p>
         </section>

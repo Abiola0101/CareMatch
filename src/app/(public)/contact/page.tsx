@@ -56,9 +56,9 @@ export default function ContactPage() {
             Talk to the CareMatch team
           </h1>
           <p className="mt-4 text-lg text-muted-foreground">
-            Whether you're an insurer looking for enterprise access, a hospital
+            Whether you&apos;re an insurer looking for enterprise access, a hospital
             group wanting to list your specialists, or a partner with an
-            integration idea — we'd love to hear from you.
+            integration idea — we&apos;d love to hear from you.
           </p>
 
           <div className="mt-10 space-y-6">
@@ -112,7 +112,7 @@ export default function ContactPage() {
                 <div className="mb-4 text-4xl">✓</div>
                 <h2 className="text-xl font-semibold">Message received</h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  Thanks for reaching out. We'll get back to you within one
+                  Thanks for reaching out. We&apos;ll get back to you within one
                   business day.
                 </p>
               </CardContent>
@@ -122,7 +122,7 @@ export default function ContactPage() {
               <CardHeader>
                 <CardTitle>Send us a message</CardTitle>
                 <CardDescription>
-                  Tell us about your needs and we'll follow up.
+                  Tell us about your needs and we&apos;ll follow up.
                 </CardDescription>
               </CardHeader>
               <CardContent>

@@ -9,8 +9,8 @@ export default function PrivacyPage() {
           <h2 className="text-base font-semibold text-foreground">1. Who we are</h2>
           <p>
             CareMatch Global operates a clinical specialist matching platform that connects
-            patients with specialist physicians worldwide. References to "we", "us", or
-            "our" mean CareMatch Global and its operating entity.
+            patients with specialist physicians worldwide. References to &ldquo;we&rdquo;, &ldquo;us&rdquo;, or
+            &ldquo;our&rdquo; mean CareMatch Global and its operating entity.
           </p>
         </section>
 
