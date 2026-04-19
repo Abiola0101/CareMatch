@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,6 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { modeLabel, timeAgo } from "@/lib/connections/labels";
 
 type Row = {
   id: string;
@@ -48,23 +48,7 @@ function urgencyBadge(u: string | null) {
   }
 }
 
-function modeLabel(m: string | null) {
-  switch (m) {
-    case "remote":
-      return "Remote second opinion";
-    case "telemedicine":
-      return "Telemedicine";
-    case "medical_travel":
-      return "Medical travel";
-    case "fly_doctor":
-      return "Fly the doctor";
-    default:
-      return m ?? "—";
-  }
-}
-
 export default function SpecialistConnectionsPage() {
-  const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
@@ -110,7 +94,6 @@ export default function SpecialistConnectionsPage() {
         return;
       }
       await load();
-      router.refresh();
     } catch {
       setErr("Network error.");
     } finally {
@@ -121,16 +104,6 @@ export default function SpecialistConnectionsPage() {
   const pending = rows.filter((r) => r.status === "pending");
   const accepted = rows.filter((r) => r.status === "accepted");
   const archived = rows.filter((r) => r.status === "declined" || r.status === "expired");
-
-  function timeAgo(iso: string) {
-    const diff = Date.now() - new Date(iso).getTime();
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hrs = Math.floor(mins / 60);
-    if (hrs < 24) return `${hrs}h ago`;
-    const days = Math.floor(hrs / 24);
-    return days < 7 ? `${days}d ago` : new Date(iso).toLocaleDateString();
-  }
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">
@@ -159,7 +132,6 @@ export default function SpecialistConnectionsPage() {
       ) : (
         <div className="space-y-8">
 
-          {/* Pending requests */}
           {pending.length > 0 && (
             <div>
               <h2 className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -211,7 +183,6 @@ export default function SpecialistConnectionsPage() {
             </div>
           )}
 
-          {/* Active conversations */}
           {accepted.length > 0 && (
             <div>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -246,7 +217,6 @@ export default function SpecialistConnectionsPage() {
             </div>
           )}
 
-          {/* Archived */}
           {archived.length > 0 && (
             <div>
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">

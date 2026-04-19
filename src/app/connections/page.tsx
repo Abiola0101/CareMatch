@@ -3,27 +3,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { dashboardPathForRole } from "@/lib/auth/dashboard";
 import { hasActivePlatformAccess } from "@/lib/auth/subscription";
-
-function modeLabel(m: string | null) {
-  switch (m) {
-    case "remote": return "Remote second opinion";
-    case "telemedicine": return "Telemedicine";
-    case "medical_travel": return "Medical travel";
-    case "fly_doctor": return "Fly the doctor";
-    default: return m ?? "—";
-  }
-}
-
-function timeAgo(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  if (days < 7) return `${days}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
+import { modeLabel, timeAgo } from "@/lib/connections/labels";
 
 export default async function PatientConnectionsPage() {
   const supabase = createClient();
@@ -91,7 +71,6 @@ export default async function PatientConnectionsPage() {
         </div>
       </div>
 
-      {/* Active message threads */}
       {accepted.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -106,11 +85,9 @@ export default async function PatientConnectionsPage() {
                   i !== 0 ? "border-t" : ""
                 }`}
               >
-                {/* Avatar */}
                 <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-semibold text-primary">
                   {c.specialist_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
                 </div>
-                {/* Info */}
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-foreground truncate">{c.specialist_name}</p>
@@ -121,7 +98,6 @@ export default async function PatientConnectionsPage() {
                     {modeLabel(c.preferred_mode)}
                   </p>
                 </div>
-                {/* Arrow */}
                 <span className="text-muted-foreground">›</span>
               </Link>
             ))}
@@ -129,7 +105,6 @@ export default async function PatientConnectionsPage() {
         </div>
       )}
 
-      {/* Pending requests */}
       {pending.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -165,7 +140,6 @@ export default async function PatientConnectionsPage() {
         </div>
       )}
 
-      {/* Archived */}
       {archived.length > 0 && (
         <div className="mb-8">
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -190,7 +164,6 @@ export default async function PatientConnectionsPage() {
         </div>
       )}
 
-      {/* Empty state */}
       {connections.length === 0 && (
         <div className="rounded-xl border bg-card px-6 py-12 text-center shadow-sm">
           <p className="text-4xl">💬</p>

@@ -2,23 +2,18 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import {
-  ResponsiveContainer,
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-} from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
-const PIE_COLORS = ["#0ea5e9", "#8b5cf6", "#10b981", "#f59e0b", "#64748b"];
+const BAR_COLORS = [
+  "bg-sky-500",
+  "bg-violet-500",
+  "bg-emerald-500",
+  "bg-amber-500",
+  "bg-slate-500",
+];
+
+const PIE_HEX = ["#0ea5e9", "#8b5cf6", "#10b981", "#f59e0b", "#64748b"];
 
 type AnalyticsPayload = {
   matchesPerMonth: { month: string; label: string; count: number }[];
@@ -31,6 +26,78 @@ type AnalyticsPayload = {
   };
   avgMatchScore: number | null;
 };
+
+/** Simple CSS bar chart — no external dependency. */
+function BarChartCSS({
+  data,
+}: {
+  data: { label: string; count: number }[];
+}) {
+  const max = Math.max(...data.map((d) => d.count), 1);
+  return (
+    <div className="flex h-full items-end gap-2">
+      {data.map((d, i) => {
+        const pct = Math.round((d.count / max) * 100);
+        return (
+          <div key={d.label} className="group flex flex-1 flex-col items-center gap-1">
+            <span className="hidden text-[10px] text-muted-foreground group-hover:block">
+              {d.count}
+            </span>
+            <div className="w-full rounded-t" style={{ height: `${Math.max(pct, 2)}%` }}>
+              <div
+                className={`h-full w-full rounded-t ${BAR_COLORS[i % BAR_COLORS.length]}`}
+              />
+            </div>
+            <span className="truncate text-[10px] text-muted-foreground">{d.label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Simple CSS donut / legend chart — no external dependency. */
+function PieChartCSS({
+  data,
+}: {
+  data: { name: string; value: number }[];
+}) {
+  const total = data.reduce((s, d) => s + d.value, 0) || 1;
+  // Build conic-gradient stops
+  let cumulative = 0;
+  const stops = data
+    .map((d, i) => {
+      const start = Math.round((cumulative / total) * 360);
+      cumulative += d.value;
+      const end = Math.round((cumulative / total) * 360);
+      return `${PIE_HEX[i % PIE_HEX.length]} ${start}deg ${end}deg`;
+    })
+    .join(", ");
+
+  return (
+    <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-start">
+      <div
+        className="h-40 w-40 shrink-0 rounded-full"
+        style={{ background: `conic-gradient(${stops})` }}
+        aria-hidden="true"
+      />
+      <ul className="space-y-2 text-sm">
+        {data.map((d, i) => (
+          <li key={d.name} className="flex items-center gap-2">
+            <span
+              className="inline-block h-3 w-3 shrink-0 rounded-sm"
+              style={{ background: PIE_HEX[i % PIE_HEX.length] }}
+            />
+            <span className="text-foreground">{d.name}</span>
+            <span className="ml-auto pl-4 tabular-nums text-muted-foreground">
+              {d.value} ({Math.round((d.value / (data.reduce((s, x) => s + x.value, 0) || 1)) * 100)}%)
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export function SpecialistAnalyticsDashboard() {
   const [data, setData] = useState<AnalyticsPayload | null>(null);
@@ -112,8 +179,8 @@ export function SpecialistAnalyticsDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent className="text-xs text-muted-foreground">
-            Distinct matched cases: {data?.conversion.matchedDistinctCases ?? 0}. Overlap with connection
-            cases: {data?.conversion.connectedDistinctCasesOverlapping ?? 0}.
+            Distinct matched cases: {data?.conversion.matchedDistinctCases ?? 0}. Overlap with
+            connection cases: {data?.conversion.connectedDistinctCasesOverlapping ?? 0}.
           </CardContent>
         </Card>
         <Card>
@@ -135,15 +202,11 @@ export function SpecialistAnalyticsDashboard() {
           <CardDescription>Matches per month (last 6 months)</CardDescription>
         </CardHeader>
         <CardContent className="h-72">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data?.matchesPerMonth ?? []}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Bar dataKey="count" fill="hsl(var(--primary))" name="Matches" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          {(data?.matchesPerMonth ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">No match data in this period.</p>
+          ) : (
+            <BarChartCSS data={data!.matchesPerMonth} />
+          )}
         </CardContent>
       </Card>
 
@@ -156,21 +219,11 @@ export function SpecialistAnalyticsDashboard() {
               : "Patient case specialties among your distinct matched cases. Add sub-specialty tags on your profile for a tag-level breakdown when case text overlaps your tags."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="h-80">
+        <CardContent>
           {pieData.length === 0 ? (
             <p className="text-sm text-muted-foreground">No match data in this period.</p>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
-                  {pieData.map((_, i) => (
-                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-                <Legend />
-              </PieChart>
-            </ResponsiveContainer>
+            <PieChartCSS data={pieData} />
           )}
         </CardContent>
       </Card>

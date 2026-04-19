@@ -140,13 +140,16 @@ serve(async (_req: Request): Promise<Response> => {
       console.error("[enforce-response] 24h query error:", err24);
       errors.push(`24h query: ${err24.message}`);
     } else {
+      const specIds24 = (rows24 ?? []).map(r => r.specialist_id);
+      const { data: specProfiles24 } = await admin
+        .from("profiles")
+        .select("id, email, full_name")
+        .in("id", specIds24)
+        .limit(100);
+      const specMap24 = new Map(specProfiles24?.map(p => [p.id, p]) ?? []);
+
       for (const row of rows24 ?? []) {
-        // Fetch specialist email/name
-        const { data: specProf } = await admin
-          .from("profiles")
-          .select("email, full_name")
-          .eq("id", row.specialist_id)
-          .maybeSingle();
+        const specProf = specMap24.get(row.specialist_id);
 
         if (!specProf?.email) {
           console.warn(`[enforce-response] No specialist email for connection ${row.id}`);
@@ -195,18 +198,18 @@ serve(async (_req: Request): Promise<Response> => {
       console.error("[enforce-response] 48h query error:", err48);
       errors.push(`48h query: ${err48.message}`);
     } else {
-      for (const row of rows48 ?? []) {
-        const { data: specProf } = await admin
-          .from("profiles")
-          .select("email, full_name")
-          .eq("id", row.specialist_id)
-          .maybeSingle();
+      const specIds48 = (rows48 ?? []).map(r => r.specialist_id);
+      const patientIds48 = (rows48 ?? []).map(r => r.patient_id);
+      const [{ data: specProfiles48 }, { data: patientProfiles48 }] = await Promise.all([
+        admin.from("profiles").select("id, email, full_name").in("id", specIds48).limit(100),
+        admin.from("profiles").select("id, email, full_name").in("id", patientIds48).limit(100),
+      ]);
+      const specMap48 = new Map(specProfiles48?.map(p => [p.id, p]) ?? []);
+      const patientMap48 = new Map(patientProfiles48?.map(p => [p.id, p]) ?? []);
 
-        const { data: patientProf } = await admin
-          .from("profiles")
-          .select("email, full_name")
-          .eq("id", row.patient_id)
-          .maybeSingle();
+      for (const row of rows48 ?? []) {
+        const specProf = specMap48.get(row.specialist_id);
+        const patientProf = patientMap48.get(row.patient_id);
 
         // Send escalation email to specialist
         if (specProf?.email) {
@@ -244,11 +247,12 @@ serve(async (_req: Request): Promise<Response> => {
           continue;
         }
 
-        // Recalculate specialist response rate
-        await recalcResponseRate(admin, row.specialist_id);
-
         escalations48Sent++;
       }
+
+      // Deduplicate recalcResponseRate calls — one per unique specialist
+      const uniqueSpecIds = [...new Set((rows48 ?? []).map(r => r.specialist_id))];
+      await Promise.all(uniqueSpecIds.map(id => recalcResponseRate(admin, id)));
     }
   }
 

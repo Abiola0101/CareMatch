@@ -77,14 +77,10 @@ export async function GET() {
   let specBy = new Map<string, Record<string, unknown>>();
 
   if (specIds.length > 0) {
-    const { data: names } = await admin
-      .from("profiles")
-      .select("id, full_name")
-      .in("id", specIds);
-    const { data: specs } = await admin
-      .from("specialist_profiles")
-      .select("id, title, specialty, institution")
-      .in("id", specIds);
+    const [{ data: names }, { data: specs }] = await Promise.all([
+      admin.from("profiles").select("id, full_name").in("id", specIds),
+      admin.from("specialist_profiles").select("id, title, specialty, institution").in("id", specIds),
+    ]);
     nameBy = new Map((names ?? []).map((p) => [p.id, p.full_name as string]));
     specBy = new Map((specs ?? []).map((s) => [s.id, s as Record<string, unknown>]));
   }
@@ -322,17 +318,10 @@ export async function POST(request: Request) {
   const appBase =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 
-  const { data: specProfile } = await admin
-    .from("profiles")
-    .select("email, full_name")
-    .eq("id", specialist_id)
-    .maybeSingle();
-
-  const { data: specMeta } = await admin
-    .from("specialist_profiles")
-    .select("specialty")
-    .eq("id", specialist_id)
-    .maybeSingle();
+  const [{ data: specProfile }, { data: specMeta }] = await Promise.all([
+    admin.from("profiles").select("email, full_name").eq("id", specialist_id).maybeSingle(),
+    admin.from("specialist_profiles").select("specialty").eq("id", specialist_id).maybeSingle(),
+  ]);
 
   if (specProfile?.email) {
     try {

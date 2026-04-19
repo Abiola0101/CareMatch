@@ -93,13 +93,10 @@ export default async function PatientDashboardPage() {
     redirect("/onboarding/subscription");
   }
 
-  const { data: pp, error: ppe } = await supabase
-    .from("patient_profiles")
-    .select(
-      "connections_used, connections_limit, subscription_tier, billing_period_end",
-    )
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: pp, error: ppe }, { data: cases }] = await Promise.all([
+    supabase.from("patient_profiles").select("connections_used, connections_limit, subscription_tier, billing_period_end").eq("id", user.id).maybeSingle(),
+    supabase.from("patient_cases").select("id, title, specialty, created_at, status").eq("patient_id", user.id).eq("status", "active").order("created_at", { ascending: false }).limit(20),
+  ]);
 
   if (ppe || !pp) {
     notFound();
@@ -109,13 +106,6 @@ export default async function PatientDashboardPage() {
   const limit = Math.max(1, pp.connections_limit ?? 1);
   const pct = Math.min(100, Math.round((used / limit) * 100));
   const atLimit = used >= limit;
-
-  const { data: cases } = await supabase
-    .from("patient_cases")
-    .select("id, title, specialty, created_at, status")
-    .eq("patient_id", user.id)
-    .eq("status", "active")
-    .order("created_at", { ascending: false });
 
   const display = firstName(profile?.full_name);
 

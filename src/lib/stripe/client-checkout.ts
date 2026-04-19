@@ -63,7 +63,3 @@ export function pricesAreConfigured(prices: StripePricesPayload | null): boolean
   );
 }
 
-// Legacy alias kept for any callers that still reference specialistListedPriceId
-export function specialistListedPriceId(prices: StripePricesPayload): string {
-  return prices.specialist.monthly;
-}

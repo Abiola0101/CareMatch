@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { dashboardPathForRole } from "@/lib/auth/dashboard";
 
 const POLL_INTERVAL_MS = 2000;
 const POLL_TIMEOUT_MS = 20000;
@@ -11,19 +12,6 @@ type MeResponse = {
   role?: string;
   stripe_sub_id?: string | null;
 };
-
-function dashboardPathForRole(role: string | undefined): string {
-  switch (role) {
-    case "specialist":
-      return "/specialist/dashboard";
-    case "hospital":
-      return "/hospital/dashboard";
-    case "insurer":
-      return "/insurer/dashboard";
-    default:
-      return "/dashboard";
-  }
-}
 
 export default function OnboardingCompletePage() {
   const [status, setStatus] = useState<"polling" | "active" | "timeout">(

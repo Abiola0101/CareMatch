@@ -50,6 +50,8 @@ export type PatientTier = "patient";
 export type SpecialistTier = "specialist";
 export type InsurerTier = "insurer";
 
+export const PATIENT_CONNECTIONS_LIMIT = 999;
+
 const ALL_SUBSCRIPTION_PRICE_IDS: string[] = [
   stripePriceIds.patient.monthly,
   stripePriceIds.patient.annual,
@@ -92,8 +94,8 @@ export function priceIdAllowedForRole(
 }
 
 /** Connections cap for patient tier. */
-export function connectionsLimitForPatientTier(tier: PatientTier): number {
-  return 999;
+export function connectionsLimitForPatientTier(_tier: PatientTier): number {
+  return PATIENT_CONNECTIONS_LIMIT;
 }
 
 /**
@@ -105,14 +107,14 @@ export function patientTierFromPriceId(
 ): { tier: PatientTier; connectionsLimit: number } | null {
   const normalized = metadataTier?.toLowerCase().trim();
   if (normalized === "patient") {
-    return { tier: "patient", connectionsLimit: 999 };
+    return { tier: "patient", connectionsLimit: PATIENT_CONNECTIONS_LIMIT };
   }
 
   if (
     priceId === stripePriceIds.patient.monthly ||
     priceId === stripePriceIds.patient.annual
   ) {
-    return { tier: "patient", connectionsLimit: 999 };
+    return { tier: "patient", connectionsLimit: PATIENT_CONNECTIONS_LIMIT };
   }
   return null;
 }

@@ -113,23 +113,11 @@ export async function PUT(
   const appBase =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") || "http://localhost:3000";
 
-  const { data: patientProf } = await admin
-    .from("profiles")
-    .select("email, full_name")
-    .eq("id", row.patient_id)
-    .maybeSingle();
-
-  const { data: specProf } = await admin
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  const { data: specMeta } = await admin
-    .from("specialist_profiles")
-    .select("specialty")
-    .eq("id", user.id)
-    .maybeSingle();
+  const [{ data: patientProf }, { data: specProf }, { data: specMeta }] = await Promise.all([
+    admin.from("profiles").select("email, full_name").eq("id", row.patient_id).maybeSingle(),
+    admin.from("profiles").select("full_name").eq("id", user.id).maybeSingle(),
+    admin.from("specialist_profiles").select("specialty").eq("id", user.id).maybeSingle(),
+  ]);
 
   if (patientProf?.email) {
     try {
