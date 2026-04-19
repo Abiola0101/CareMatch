@@ -181,6 +181,22 @@ function statusBadge(available: string | null | undefined) {
   );
 }
 
+/**
+ * Returns true when the availability score signals the specialist's wait time
+ * is unlikely to meet the patient's stated urgency.
+ *   within_1_week  + score_avail ≤ 5  → wait > 14 days
+ *   within_4_weeks + score_avail ≤ 4  → wait > 60 days
+ */
+function isAvailabilityMismatch(
+  urgency: string | null,
+  scoreAvail: number | null,
+): boolean {
+  if (scoreAvail == null) return false;
+  if (urgency === "within_1_week") return scoreAvail <= 5;
+  if (urgency === "within_4_weeks") return scoreAvail <= 4;
+  return false;
+}
+
 const COMPAT_DIMS: {
   key: keyof Pick<
     MatchResultDetail,
@@ -516,6 +532,11 @@ export function CaseDetailClient({
                           #1 Global
                         </span>
                       )}
+                      {isAvailabilityMismatch(data.case.urgency, m.score_avail) && (
+                        <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-400">
+                          ⚠ Availability
+                        </span>
+                      )}
                       <div className="text-left sm:text-right">
                         <p className="text-4xl font-bold tabular-nums leading-none text-primary">
                           {scoreRounded ?? "—"}
@@ -727,20 +748,34 @@ export function CaseDetailClient({
                               num != null
                                 ? Math.min(100, Math.max(0, (num / dim.max) * 100))
                                 : 0;
+                            const availWarn =
+                              dim.key === "score_avail" &&
+                              isAvailabilityMismatch(data.case.urgency, m.score_avail);
                             return (
                               <div key={dim.key}>
                                 <div className="mb-1 flex justify-between text-xs">
-                                  <span className="font-medium">{dim.label}</span>
+                                  <span className={cn("font-medium", availWarn && "text-amber-700 dark:text-amber-400")}>
+                                    {dim.label}
+                                    {availWarn && " ⚠"}
+                                  </span>
                                   <span className="tabular-nums text-muted-foreground">
-                                    {num != null ? num.toFixed(0) : "—"}
+                                    {num != null ? num.toFixed(0) : "—"} / {dim.max}
                                   </span>
                                 </div>
                                 <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                                   <div
-                                    className="h-full rounded-full bg-primary/90"
+                                    className={cn(
+                                      "h-full rounded-full",
+                                      availWarn ? "bg-amber-400" : "bg-primary/90",
+                                    )}
                                     style={{ width: `${pct}%` }}
                                   />
                                 </div>
+                                {availWarn && (
+                                  <p className="mt-1.5 text-xs text-amber-700 dark:text-amber-400">
+                                    This specialist's typical wait time may not meet your stated urgency. They are still a strong clinical match — contact them to discuss expedited availability.
+                                  </p>
+                                )}
                               </div>
                             );
                           })}
