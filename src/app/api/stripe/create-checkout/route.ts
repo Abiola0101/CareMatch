@@ -8,6 +8,7 @@ import {
   priceIdAllowedForRole,
 } from "@/lib/stripe/pricing";
 import { ensureRoleSpecificProfile } from "@/lib/auth/role-profiles";
+import { checkoutLimiter, checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -60,6 +61,14 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Admin accounts do not use checkout." },
       { status: 400 },
+    );
+  }
+
+  const { limited } = await checkRateLimit(checkoutLimiter, `checkout:${parsed.data.userId}`);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many checkout attempts. Please try again later." },
+      { status: 429 },
     );
   }
 

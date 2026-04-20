@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { z } from "zod";
 import { ensureRoleChildProfilesWithServiceRole } from "@/lib/auth/role-profiles";
+import { signupLimiter, checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,15 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { limited } = await checkRateLimit(signupLimiter, `signup:${ip}`);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many signup attempts. Please try again in an hour." },
+      { status: 429 },
+    );
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 

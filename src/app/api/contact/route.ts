@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/headers";
 import { z } from "zod";
 import { resend } from "@/lib/resend";
+import { contactLimiter, checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +14,15 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const { limited } = await checkRateLimit(contactLimiter, `contact:${ip}`);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many submissions. Please try again later." },
+      { status: 429 },
+    );
+  }
+
   let json: unknown;
   try {
     json = await request.json();

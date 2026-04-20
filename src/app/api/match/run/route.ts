@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { normalizeEnvSecret } from "@/lib/env/normalize-env-secret";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
+import { matchLimiter, checkRateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -53,6 +54,14 @@ export async function POST(request: NextRequest) {
   if (authErr || !authUser) {
     console.warn("[match/run] getUser(jwt) failed", authErr?.message ?? "no user");
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { limited } = await checkRateLimit(matchLimiter, `match:${authUser.id}`);
+  if (limited) {
+    return NextResponse.json(
+      { error: "Too many match requests. Please wait before running again." },
+      { status: 429 },
+    );
   }
 
   let json: unknown;
