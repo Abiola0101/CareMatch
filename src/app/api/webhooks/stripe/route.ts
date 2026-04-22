@@ -4,9 +4,10 @@ import { stripe } from "@/lib/stripe";
 import { resend } from "@/lib/resend";
 import { createServiceRoleClient } from "@/lib/supabase/service-role";
 import {
-  patientTierFromPriceId,
+  PATIENT_CONNECTIONS_LIMIT,
+  patientConnectionsLimitFromMetadata,
+  patientDbSubscriptionTier,
   specialistTierFromPriceId,
-  type PatientTier,
 } from "@/lib/stripe/pricing";
 
 export const dynamic = "force-dynamic";
@@ -29,42 +30,103 @@ async function findProfileByStripeCustomerId(
 ): Promise<ProfileLocation> {
   const admin = createServiceRoleClient();
 
-  const { data: p } = await admin
+  const { data: p, error: pe } = await admin
     .from("patient_profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
+  if (pe) {
+    console.error("[stripe webhook] patient_profiles lookup by stripe_customer_id", pe);
+  }
   if (p) {
     return { role: "patient", userId: p.id, table: "patient_profiles" };
   }
 
-  const { data: s } = await admin
+  const { data: s, error: se } = await admin
     .from("specialist_profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
+  if (se) {
+    console.error("[stripe webhook] specialist_profiles lookup by stripe_customer_id", se);
+  }
   if (s) {
     return { role: "specialist", userId: s.id, table: "specialist_profiles" };
   }
 
-  const { data: h } = await admin
+  const { data: h, error: he } = await admin
     .from("hospital_profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
+  if (he) {
+    console.error("[stripe webhook] hospital_profiles lookup by stripe_customer_id", he);
+  }
   if (h) {
     return { role: "hospital", userId: h.id, table: "hospital_profiles" };
   }
 
-  const { data: i } = await admin
+  const { data: i, error: ie } = await admin
     .from("insurer_profiles")
     .select("id")
     .eq("stripe_customer_id", customerId)
     .maybeSingle();
+  if (ie) {
+    console.error("[stripe webhook] insurer_profiles lookup by stripe_customer_id", ie);
+  }
   if (i) {
     return { role: "insurer", userId: i.id, table: "insurer_profiles" };
   }
 
+  return null;
+}
+
+/** DB row may lack stripe_customer_id; Stripe Customer metadata from checkout has supabase_user_id. */
+async function resolveProfileLocation(customerId: string): Promise<ProfileLocation> {
+  console.log("[stripe webhook] resolveProfileLocation: by stripe_customer_id", {
+    customerId,
+  });
+  const fromDb = await findProfileByStripeCustomerId(customerId);
+  if (fromDb) {
+    console.log("[stripe webhook] resolveProfileLocation: matched DB row", fromDb);
+    return fromDb;
+  }
+
+  console.warn(
+    "[stripe webhook] resolveProfileLocation: no profile row for customer; trying Stripe customer metadata",
+  );
+  try {
+    const c = await stripe.customers.retrieve(customerId);
+    if (c.deleted) {
+      console.warn("[stripe webhook] resolveProfileLocation: Stripe customer is deleted");
+      return null;
+    }
+    const md = c.metadata ?? {};
+    const uid = md.supabase_user_id?.trim();
+    const role = md.supabase_role?.trim();
+    console.log("[stripe webhook] resolveProfileLocation: Stripe customer metadata", {
+      uid: uid ?? null,
+      role: role ?? null,
+    });
+    if (!uid || !role) {
+      return null;
+    }
+    if (role === "patient") {
+      return { role: "patient", userId: uid, table: "patient_profiles" };
+    }
+    if (role === "specialist") {
+      return { role: "specialist", userId: uid, table: "specialist_profiles" };
+    }
+    if (role === "hospital") {
+      return { role: "hospital", userId: uid, table: "hospital_profiles" };
+    }
+    if (role === "insurer") {
+      return { role: "insurer", userId: uid, table: "insurer_profiles" };
+    }
+    console.warn("[stripe webhook] resolveProfileLocation: unknown supabase_role", role);
+  } catch (e) {
+    console.error("[stripe webhook] resolveProfileLocation: customers.retrieve failed", e);
+  }
   return null;
 }
 
@@ -143,83 +205,159 @@ async function resolveTierMetadata(
 }
 
 async function applySubscriptionUpsert(sub: Stripe.Subscription) {
+  console.log("[stripe webhook] applySubscriptionUpsert: start", {
+    subscriptionId: sub.id,
+    status: sub.status,
+    customer: sub.customer,
+  });
+
   const customerId = getCustomerId(sub.customer);
   if (!customerId) {
+    console.warn("[stripe webhook] applySubscriptionUpsert: no customer id on subscription");
     return;
   }
 
-  const loc = await findProfileByStripeCustomerId(customerId);
+  const loc = await resolveProfileLocation(customerId);
   if (!loc) {
+    console.warn("[stripe webhook] applySubscriptionUpsert: could not resolve user profile", {
+      customerId,
+    });
     return;
   }
 
   const priceId = getPrimaryPriceId(sub);
   const { metaTier } = await resolveTierMetadata(priceId, sub);
+  console.log("[stripe webhook] applySubscriptionUpsert: resolved context", {
+    userId: loc.userId,
+    role: loc.role,
+    table: loc.table,
+    priceId,
+    metaTier,
+    subscriptionMetadata: sub.metadata,
+  });
+
   const admin = createServiceRoleClient();
 
   const periodEnd = sub.current_period_end
     ? new Date(sub.current_period_end * 1000).toISOString()
     : null;
 
+  const meta = (sub.metadata ?? {}) as Record<string, string>;
+
   if (loc.role === "patient") {
-    const resolved =
-      patientTierFromPriceId(priceId ?? "", metaTier) ??
-      patientTierFromPriceId(priceId ?? "", sub.metadata?.carematch_tier);
-    if (!resolved) {
+    const dbTier = patientDbSubscriptionTier(priceId, meta);
+    if (!dbTier) {
+      console.error(
+        "[stripe webhook] applySubscriptionUpsert: patient — could not map price/metadata to subscription_tier (essential|standard|premium)",
+        { priceId, metadata: meta },
+      );
       return;
     }
-    const tier = resolved.tier as PatientTier;
-    await admin
+
+    const connectionsLimit = patientConnectionsLimitFromMetadata(
+      meta,
+      PATIENT_CONNECTIONS_LIMIT,
+    );
+
+    const { data: existing, error: selErr } = await admin
       .from("patient_profiles")
-      .update({
-        stripe_sub_id: sub.id,
-        subscription_tier: tier,
-        connections_limit: resolved.connectionsLimit,
-        billing_period_end: periodEnd,
-      })
-      .eq("id", loc.userId);
+      .select("id, primary_country")
+      .eq("id", loc.userId)
+      .maybeSingle();
+
+    if (selErr) {
+      console.error("[stripe webhook] applySubscriptionUpsert: patient select error", selErr);
+    }
+
+    const primaryCountry =
+      existing?.primary_country != null && String(existing.primary_country).trim() !== ""
+        ? String(existing.primary_country).trim()
+        : "";
+
+    const row = {
+      id: loc.userId,
+      primary_country: primaryCountry,
+      stripe_customer_id: customerId,
+      stripe_sub_id: sub.id,
+      subscription_tier: dbTier,
+      connections_limit: connectionsLimit,
+      billing_period_end: periodEnd,
+    };
+
+    console.log("[stripe webhook] applySubscriptionUpsert: patient upsert", row);
+
+    const { error: upErr } = await admin
+      .from("patient_profiles")
+      .upsert(row, { onConflict: "id" });
+
+    if (upErr) {
+      console.error("[stripe webhook] applySubscriptionUpsert: patient upsert failed", upErr);
+      return;
+    }
+
+    console.log("[stripe webhook] applySubscriptionUpsert: patient upsert OK", {
+      userId: loc.userId,
+    });
     return;
   }
 
   if (loc.role === "specialist") {
     const tier =
       specialistTierFromPriceId(priceId ?? "", metaTier) ??
-      specialistTierFromPriceId(
-        priceId ?? "",
-        sub.metadata?.carematch_tier,
-      );
+      specialistTierFromPriceId(priceId ?? "", sub.metadata?.carematch_tier);
     if (!tier) {
+      console.error(
+        "[stripe webhook] applySubscriptionUpsert: specialist — unknown price / tier",
+        { priceId, metadata: sub.metadata },
+      );
       return;
     }
-    await admin
+    const { error: spErr } = await admin
       .from("specialist_profiles")
       .update({
         stripe_sub_id: sub.id,
-        subscription_tier: tier,
+        subscription_tier: "listed",
         billing_period_end: periodEnd,
       })
       .eq("id", loc.userId);
+    if (spErr) {
+      console.error("[stripe webhook] applySubscriptionUpsert: specialist update failed", spErr);
+    } else {
+      console.log("[stripe webhook] applySubscriptionUpsert: specialist update OK", {
+        userId: loc.userId,
+      });
+    }
     return;
   }
 
   if (loc.role === "hospital") {
-    await admin
+    const { error: hErr } = await admin
       .from(loc.table)
       .update({
         stripe_sub_id: sub.id,
       })
       .eq("id", loc.userId);
+    if (hErr) {
+      console.error("[stripe webhook] applySubscriptionUpsert: hospital update failed", hErr);
+    } else {
+      console.log("[stripe webhook] applySubscriptionUpsert: hospital update OK");
+    }
     return;
   }
 
   if (loc.role === "insurer") {
-    await admin
+    const { error: iErr } = await admin
       .from("insurer_profiles")
       .update({
         stripe_sub_id: sub.id,
         billing_period_end: periodEnd,
       })
       .eq("id", loc.userId);
+    if (iErr) {
+      console.error("[stripe webhook] applySubscriptionUpsert: insurer update failed", iErr);
+    } else {
+      console.log("[stripe webhook] applySubscriptionUpsert: insurer update OK");
+    }
   }
 }
 
@@ -244,7 +382,7 @@ async function onInvoicePaymentSucceeded(invoice: Stripe.Invoice) {
   if (!customerId) {
     return;
   }
-  const loc = await findProfileByStripeCustomerId(customerId);
+  const loc = await resolveProfileLocation(customerId);
   if (!loc) {
     return;
   }
@@ -271,7 +409,7 @@ async function onInvoicePaymentFailed(invoice: Stripe.Invoice) {
   if (!customerId) {
     return;
   }
-  const loc = await findProfileByStripeCustomerId(customerId);
+  const loc = await resolveProfileLocation(customerId);
   if (!loc) {
     return;
   }
@@ -377,9 +515,17 @@ export async function POST(request: Request) {
   }
 
   try {
+    console.log("[stripe webhook] POST: handling event", {
+      type: event.type,
+      id: event.id,
+    });
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
+        console.log("[stripe webhook] checkout.session.completed", {
+          sessionId: session.id,
+          subscription: session.subscription,
+        });
         if (session.subscription) {
           const subId =
             typeof session.subscription === "string"
@@ -393,6 +539,10 @@ export async function POST(request: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated": {
         const sub = event.data.object as Stripe.Subscription;
+        console.log("[stripe webhook] subscription event", {
+          type: event.type,
+          subscriptionId: sub.id,
+        });
         await applySubscriptionUpsert(sub);
         break;
       }

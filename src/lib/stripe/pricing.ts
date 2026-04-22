@@ -14,20 +14,32 @@ export const stripePriceIds = {
     monthly: envPrice(
       "STRIPE_PRICE_PATIENT_MONTHLY",
       "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_MONTHLY",
+      "STRIPE_PRICE_PATIENT_ESSENTIAL_MONTHLY",
+      "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ESSENTIAL_MONTHLY",
+      "STRIPE_PRICE_PATIENT_STANDARD_MONTHLY",
+      "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_STANDARD_MONTHLY",
     ),
     annual: envPrice(
       "STRIPE_PRICE_PATIENT_ANNUAL",
       "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ANNUAL",
+      "STRIPE_PRICE_PATIENT_ESSENTIAL_ANNUAL",
+      "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ESSENTIAL_ANNUAL",
+      "STRIPE_PRICE_PATIENT_STANDARD_ANNUAL",
+      "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_STANDARD_ANNUAL",
     ),
   },
   specialist: {
     monthly: envPrice(
       "STRIPE_PRICE_SPECIALIST_MONTHLY",
       "NEXT_PUBLIC_STRIPE_PRICE_SPECIALIST_MONTHLY",
+      "STRIPE_PRICE_SPECIALIST_LISTED_MONTHLY",
+      "NEXT_PUBLIC_STRIPE_PRICE_SPECIALIST_LISTED_MONTHLY",
     ),
     annual: envPrice(
       "STRIPE_PRICE_SPECIALIST_ANNUAL",
       "NEXT_PUBLIC_STRIPE_PRICE_SPECIALIST_ANNUAL",
+      "STRIPE_PRICE_SPECIALIST_LISTED_ANNUAL",
+      "NEXT_PUBLIC_STRIPE_PRICE_SPECIALIST_LISTED_ANNUAL",
     ),
   },
   insurer: {
@@ -52,9 +64,81 @@ export type InsurerTier = "insurer";
 
 export const PATIENT_CONNECTIONS_LIMIT = 999;
 
+/** Every env-backed patient subscription price id (for webhook + checkout matching). */
+const PATIENT_PRICE_ENV_KEYS = [
+  "STRIPE_PRICE_PATIENT_MONTHLY",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_MONTHLY",
+  "STRIPE_PRICE_PATIENT_ANNUAL",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ANNUAL",
+  "STRIPE_PRICE_PATIENT_ESSENTIAL_MONTHLY",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ESSENTIAL_MONTHLY",
+  "STRIPE_PRICE_PATIENT_ESSENTIAL_ANNUAL",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_ESSENTIAL_ANNUAL",
+  "STRIPE_PRICE_PATIENT_STANDARD_MONTHLY",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_STANDARD_MONTHLY",
+  "STRIPE_PRICE_PATIENT_STANDARD_ANNUAL",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_STANDARD_ANNUAL",
+  "STRIPE_PRICE_PATIENT_PREMIUM_MONTHLY",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_PREMIUM_MONTHLY",
+  "STRIPE_PRICE_PATIENT_PREMIUM_ANNUAL",
+  "NEXT_PUBLIC_STRIPE_PRICE_PATIENT_PREMIUM_ANNUAL",
+] as const;
+
+export function allConfiguredPatientPriceIds(): string[] {
+  const ids = new Set<string>();
+  for (const k of PATIENT_PRICE_ENV_KEYS) {
+    const v = process.env[k]?.trim();
+    if (v) ids.add(v);
+  }
+  if (stripePriceIds.patient.monthly) ids.add(stripePriceIds.patient.monthly);
+  if (stripePriceIds.patient.annual) ids.add(stripePriceIds.patient.annual);
+  return Array.from(ids);
+}
+
+/**
+ * Maps Stripe price + metadata to patient_profiles.subscription_tier CHECK values.
+ */
+export function patientDbSubscriptionTier(
+  priceId: string | null,
+  metadata?: Record<string, string> | null,
+): "essential" | "standard" | "premium" | null {
+  const plan = metadata?.carematch_patient_plan?.toLowerCase().trim();
+  if (plan === "essential" || plan === "standard" || plan === "premium") {
+    return plan;
+  }
+  if (!priceId) {
+    return null;
+  }
+  for (const key of Object.keys(process.env)) {
+    const v = process.env[key]?.trim();
+    if (!v || v !== priceId) continue;
+    if (!/^STRIPE_PRICE_PATIENT|^NEXT_PUBLIC_STRIPE_PRICE_PATIENT/i.test(key)) {
+      continue;
+    }
+    const ku = key.toUpperCase();
+    if (ku.includes("ESSENTIAL")) return "essential";
+    if (ku.includes("STANDARD")) return "standard";
+    if (ku.includes("PREMIUM")) return "premium";
+  }
+  if (allConfiguredPatientPriceIds().includes(priceId)) {
+    return "standard";
+  }
+  return null;
+}
+
+export function patientConnectionsLimitFromMetadata(
+  metadata: Record<string, string> | null | undefined,
+  fallback: number,
+): number {
+  const raw = metadata?.carematch_connections_limit?.trim();
+  if (!raw) return fallback;
+  const n = parseInt(raw, 10);
+  if (Number.isNaN(n) || n < 1) return fallback;
+  return n;
+}
+
 const ALL_SUBSCRIPTION_PRICE_IDS: string[] = [
-  stripePriceIds.patient.monthly,
-  stripePriceIds.patient.annual,
+  ...allConfiguredPatientPriceIds(),
   stripePriceIds.specialist.monthly,
   stripePriceIds.specialist.annual,
   stripePriceIds.insurer.monthly,
@@ -73,10 +157,7 @@ export function priceIdAllowedForRole(
     return false;
   }
   if (role === "patient") {
-    return (
-      priceId === stripePriceIds.patient.monthly ||
-      priceId === stripePriceIds.patient.annual
-    );
+    return allConfiguredPatientPriceIds().includes(priceId);
   }
   if (role === "specialist") {
     return (
@@ -110,10 +191,7 @@ export function patientTierFromPriceId(
     return { tier: "patient", connectionsLimit: PATIENT_CONNECTIONS_LIMIT };
   }
 
-  if (
-    priceId === stripePriceIds.patient.monthly ||
-    priceId === stripePriceIds.patient.annual
-  ) {
+  if (allConfiguredPatientPriceIds().includes(priceId)) {
     return { tier: "patient", connectionsLimit: PATIENT_CONNECTIONS_LIMIT };
   }
   return null;
@@ -192,6 +270,10 @@ export function getCheckoutSubscriptionMetadata(args: {
     if (resolved) {
       base.carematch_tier = resolved.tier;
       base.carematch_connections_limit = String(resolved.connectionsLimit);
+    }
+    const dbTier = patientDbSubscriptionTier(args.priceId, null);
+    if (dbTier) {
+      base.carematch_patient_plan = dbTier;
     }
   } else if (args.role === "specialist") {
     const st = specialistTierFromPriceId(args.priceId, null);

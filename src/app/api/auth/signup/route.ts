@@ -16,8 +16,23 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    return await postSignup(request);
+  } catch (e) {
+    console.error("[auth/signup]", e);
+    const msg = e instanceof Error ? e.message : "Signup failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
+async function postSignup(request: Request) {
   const ip = headers().get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  const { limited } = await checkRateLimit(signupLimiter, `signup:${ip}`);
+  let limited = false;
+  try {
+    ({ limited } = await checkRateLimit(signupLimiter, `signup:${ip}`));
+  } catch (e) {
+    console.error("[auth/signup] rate limit check (continuing without limit)", e);
+  }
   if (limited) {
     return NextResponse.json(
       { error: "Too many signup attempts. Please try again in an hour." },

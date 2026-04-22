@@ -80,11 +80,18 @@ export default function SignupPage() {
         }),
       });
 
-      const payload = (await res.json()) as {
-        error?: string;
-        ok?: boolean;
-        needsEmailConfirm?: boolean;
-      };
+      const raw = await res.text();
+      let payload: { error?: string; ok?: boolean; needsEmailConfirm?: boolean } = {};
+      if (raw.trim()) {
+        try {
+          payload = JSON.parse(raw) as typeof payload;
+        } catch {
+          setFormError(
+            "The server returned an unexpected response. If you use an ad blocker or VPN, try disabling it, or try again in a moment.",
+          );
+          return;
+        }
+      }
 
       if (!res.ok) {
         setFormError(payload.error ?? "Signup failed. Please try again.");

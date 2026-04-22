@@ -45,6 +45,11 @@ export async function checkRateLimit(
   identifier: string,
 ): Promise<{ limited: boolean; remaining?: number }> {
   if (!limiterInstance) return { limited: false };
-  const { success, remaining } = await limiterInstance.limit(identifier);
-  return { limited: !success, remaining };
+  try {
+    const { success, remaining } = await limiterInstance.limit(identifier);
+    return { limited: !success, remaining };
+  } catch (e) {
+    console.error("[rate-limit] Upstash limit() failed; allowing request", e);
+    return { limited: false };
+  }
 }
